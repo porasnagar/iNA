@@ -7,7 +7,7 @@ name: Android branch + APK
 #     and publishes a GitHub Release with both APKs (releases don't use artifact storage).
 on:
   push:
-    branches: [website, main]
+    branches: [main]
     paths:
       - "src/android/**"
       - ".github/workflows/android-branch.yml"

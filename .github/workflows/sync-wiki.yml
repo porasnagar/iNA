@@ -2,7 +2,7 @@ name: Sync Wiki to GitHub Wiki
 
 on:
   push:
-    branches: [main, website]
+    branches: [main]
     paths:
       - "wiki/**"
   workflow_dispatch:

@@ -1,12 +1,14 @@
-import bannerAsset from "@/assets/ina-banner.webp.asset.json";
-import iconAsset from "@/assets/ina-icon-512.webp.asset.json";
-import lockupAsset from "@/assets/ina-lockup.webp.asset.json";
+// Real files bundled by Vite, so the art loads on Vercel and any other host
+// (the old /__l5e CDN pointers only resolve on Lovable hosting).
+import bannerUrl from "@/assets/ina-banner.webp";
+import iconUrl from "@/assets/ina-icon-512.webp";
+import lockupUrl from "@/assets/ina-lockup.webp";
 
 /** Official iNA brand artwork (cream paper background — place on `bg-paper` plates). */
 export const BRAND = {
-  icon: iconAsset.url,
-  lockup: lockupAsset.url,
-  banner: bannerAsset.url,
+  icon: iconUrl,
+  lockup: lockupUrl,
+  banner: bannerUrl,
   tagline: "Universal Apple Hardware Interoperability Suite for Android",
 } as const;
 
@@ -14,7 +16,7 @@ export const BRAND = {
 export const REPO = {
   url: "https://github.com/porasnagar/iNA",
   /** Full project (website + Android sources); the branch Lovable and Vercel use. */
-  websiteBranch: "website",
+  websiteBranch: "main",
   /** Standalone Android Studio project, generated from src/android by GitHub Actions. */
   androidBranch: "android",
   releasesUrl: "https://github.com/porasnagar/iNA/releases",
