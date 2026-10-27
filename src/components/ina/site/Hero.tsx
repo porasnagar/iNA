@@ -62,10 +62,10 @@ export function Hero() {
           </div>
 
           <div className="relative">
-            <div className="rounded-[44px] bg-paper p-8 shadow-plate sm:p-12">
+            <div className="overflow-hidden rounded-[44px] bg-paper shadow-plate">
               <img src={BRAND.lockup} alt="iNA logo — unlocked padlock i, N with the chameleon, and the bitten apple á" width={1600} height={715} className="w-full" />
             </div>
-            <div className="absolute -bottom-6 left-6 flex items-center gap-3 rounded-2xl border border-border bg-card/90 py-2.5 pl-2.5 pr-4 shadow-sheet backdrop-blur-xl sm:left-10">
+            <div className="absolute -bottom-6 right-6 flex items-center gap-3 rounded-2xl border border-border bg-card/90 py-2.5 pl-2.5 pr-4 shadow-sheet backdrop-blur-xl sm:right-10">
               <InaLogo className="size-11" />
               <div className="leading-tight">
                 <div className="text-sm font-semibold">iNA for Android</div>
