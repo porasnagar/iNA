@@ -3,7 +3,14 @@ import { strToU8, zipSync } from "fflate";
 import { PRODUCT_IMAGES, PRODUCT_RES_NAMES } from "@/components/ina/product";
 import type { ProductImageKey } from "@/lib/ina/protocol";
 
-const RAW = import.meta.glob("/src/android/**/*", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const RAW = import.meta.glob(["/src/android/**/*", "!/src/android/**/*.png"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+/** Binary resources (launcher icons) — shipped in the zip as-is, never shown in the viewer. */
+const BINARY = import.meta.glob("/src/android/**/*.png", { query: "?url", import: "default", eager: true }) as Record<string, string>;
 
 export type SourceLanguage = "kotlin" | "xml" | "gradle" | "text";
 
@@ -133,6 +140,9 @@ export async function buildProjectZip(): Promise<Blob> {
   }
   for (const key of Object.keys(PRODUCT_IMAGES) as ProductImageKey[]) {
     files[`iNA/app/src/main/res/drawable-nodpi/${PRODUCT_RES_NAMES[key]}.png`] = await fetchBytes(PRODUCT_IMAGES[key]);
+  }
+  for (const [fullPath, url] of Object.entries(BINARY)) {
+    files[`iNA/${fullPath.replace(/^\/src\/android\//, "")}`] = await fetchBytes(url);
   }
   const zipped = zipSync(files, { level: 6 });
   return new Blob([zipped as BlobPart], { type: "application/zip" });
