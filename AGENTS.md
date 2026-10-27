@@ -23,3 +23,4 @@
 
 - Binary Android resources (launcher PNGs in `src/android/**/res/mipmap-*`) are real files so GitHub CI can build them; `android-source.ts` excludes `*.png` from the raw glob and adds them to the zip via a `?url` glob.
 - Official brand art is served from Lovable Assets pointers in `src/assets/ina-*.asset.json` via `src/components/ina/brand.ts`; favicon/manifest icons are real files in `public/`.
+- Accent scoping: `.theme-brand` (root layout wrapper) sets the website accent to the brand tokens; `.theme-apple` on the phone frame resets it to the original Apple palette, so anything rendered inside the phone never inherits the website accent.
