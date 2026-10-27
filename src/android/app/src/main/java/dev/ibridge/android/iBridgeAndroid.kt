@@ -2118,7 +2118,7 @@ fun AppleCaseOpenPopupSheet(
             }
         }
         if (message != null && stage != PopupStage.PAIRING) {
-            Text(message, color = InaColors.Warning, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            Text(message, color = InaColors.TextPrimary, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.height(20.dp))
         when (stage) {

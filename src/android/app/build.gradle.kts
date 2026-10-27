@@ -89,4 +89,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // Reaches the hidden classic L2CAP BluetoothSocket constructor AirPods need, without root.
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+
+    testImplementation("junit:junit:4.13.2")
 }
