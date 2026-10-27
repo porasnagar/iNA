@@ -1,17 +1,15 @@
 import { Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useSim } from "@/lib/ina/store";
-import { suggestNextAction, type SuggestionId } from "@/lib/ina/suggest";
+import { suggestionCandidates, suggestNextAction, type SuggestionInput } from "@/lib/ina/suggest";
 
 /** Contextual "what to do next" card at the top of the connected AirPods screen. */
 export function SuggestedAction() {
   const { state, actions, model, displayBattery } = useSim();
-  const [dismissed, setDismissed] = useState<SuggestionId[]>([]);
-  if (!model) return null;
   const a = state.accessory;
-  const suggestion = suggestNextAction({
+  const input: SuggestionInput | null = model ? {
     caps: model.caps,
     left: displayBattery("left"),
     right: displayBattery("right"),
@@ -24,8 +22,15 @@ export function SuggestedAction() {
     fitTested: state.fitTested,
     pausedByEar: state.media.pausedByEar,
     playing: state.media.playing,
-    dismissed,
-  });
+    dismissed: state.suggestions.closed,
+    quietUntil: state.suggestions.quietUntil,
+    now: Date.now(),
+  } : null;
+  const currentIds = input ? suggestionCandidates(input).map((c) => c.id).join(",") : "";
+  useEffect(() => {
+    actions.forgetClearedSuggestions(currentIds ? (currentIds.split(",") as SuggestionInput["dismissed"][number][]) : []);
+  }, [actions, currentIds]);
+  const suggestion = input ? suggestNextAction(input) : null;
   if (!suggestion) return null;
 
   const run = () => {
@@ -35,6 +40,7 @@ export function SuggestedAction() {
         return actions.setMode("off", "suggestion · save battery");
       case "resume":
       case "start-listening":
+        actions.completeSuggestion(suggestion.id);
         return actions.toggleMedia();
       case "fit-test":
         return actions.setTab("controls");
@@ -68,7 +74,7 @@ export function SuggestedAction() {
       <button
         type="button"
         aria-label="Dismiss suggestion"
-        onClick={() => setDismissed((d) => [...d, suggestion.id])}
+        onClick={() => actions.dismissSuggestion(suggestion.id)}
         className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-foreground/10"
       >
         <X className="size-3.5" />

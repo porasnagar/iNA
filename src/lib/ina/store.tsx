@@ -18,6 +18,7 @@ import {
   type ListeningMode,
   type ProximityPacket,
 } from "./protocol";
+import { completeSuggestion, dismissSuggestion, EMPTY_SUGGESTION_MEMORY, forgetClearedAlerts, type SuggestionId, type SuggestionMemory } from "./suggest";
 
 export type PermissionKey = "bluetooth" | "overlay" | "companion" | "notifications";
 export type Surface = "home" | "app";
@@ -101,6 +102,8 @@ export interface SimState {
   appearance: Appearance;
   /** Ear Tip Fit Test has completed at least once (feeds the suggested action). */
   fitTested: boolean;
+  /** Suggestions the user closed (persisted, like SuggestionMemoryStore on Android). */
+  suggestions: SuggestionMemory;
   log: LogEntry[];
 }
 
@@ -162,6 +165,7 @@ const initialState: SimState = {
   reduceTransparency: false,
   appearance: "system",
   fitTested: false,
+  suggestions: EMPTY_SUGGESTION_MEMORY,
   log: [],
 };
 
@@ -202,6 +206,7 @@ function useSimStore() {
           reduceTransparency: saved.reduceTransparency ?? s.reduceTransparency,
           appearance: saved.appearance ?? s.appearance,
           fitTested: saved.fitTested ?? s.fitTested,
+          suggestions: saved.suggestions ?? s.suggestions,
           accessory: saved.accessory ? { ...s.accessory, ...saved.accessory, leftInEar: false, rightInEar: false } : s.accessory,
         }));
       }
@@ -214,10 +219,10 @@ function useSimStore() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested } = state;
+    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested, suggestions } = state;
     window.localStorage.setItem(
       PERSIST_KEY,
-      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested }),
+      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested, suggestions }),
     );
   }, [hydrated, state]);
 
@@ -516,6 +521,18 @@ function useSimStore() {
       },
       markFitTested() {
         set((s) => ({ ...s, fitTested: true }));
+      },
+      dismissSuggestion(id: SuggestionId) {
+        set((s) => withLog({ ...s, suggestions: dismissSuggestion(s.suggestions, id, Date.now()) }, entry("UI", `Suggestion closed: ${id}`)));
+      },
+      completeSuggestion(id: SuggestionId) {
+        set((s) => ({ ...s, suggestions: completeSuggestion(s.suggestions, id) }));
+      },
+      forgetClearedSuggestions(current: SuggestionId[]) {
+        set((s) => {
+          const next = forgetClearedAlerts(s.suggestions, current);
+          return next === s.suggestions ? s : { ...s, suggestions: next };
+        });
       },
     };
   }, []);
