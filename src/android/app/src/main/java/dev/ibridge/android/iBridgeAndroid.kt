@@ -497,7 +497,7 @@ class OtaProtocolRuleManager(context: Context) {
     fun opcode(key: String): ByteArray? = _rules.value.opcodes[key]
 
     /** Validates, persists and hot-reloads a manifest. Returns an error message on failure. */
-    fun apply(json: String): Result<OtaRules> = parse(json).onSuccess { rules ->
+    fun applyJson(json: String): Result<OtaRules> = parse(json).onSuccess { rules ->
         prefs.edit().putString(KEY_JSON, rules.rawJson).apply()
         mergeModels(rules)
         _rules.value = rules
@@ -506,22 +506,22 @@ class OtaProtocolRuleManager(context: Context) {
     fun overridePsm(psm: Int): Result<OtaRules> {
         if (!AppleProtocolSpec.isValidPsm(psm)) return Result.failure(IllegalArgumentException("Invalid PSM ${AppleProtocolSpec.hex(psm)}"))
         val obj = JSONObject(_rules.value.rawJson).put("l2cap_psm", AppleProtocolSpec.hex(psm))
-        return apply(obj.toString(2))
+        return applyJson(obj.toString(2))
     }
 
     fun registerModel(id: Int, name: String): Result<OtaRules> {
         val obj = JSONObject(_rules.value.rawJson)
         obj.getJSONObject("models").put(AppleProtocolSpec.hex(id), name)
-        return apply(obj.toString(2))
+        return applyJson(obj.toString(2))
     }
 
     fun removeModel(id: Int): Result<OtaRules> {
         val obj = JSONObject(_rules.value.rawJson)
         obj.getJSONObject("models").remove(AppleProtocolSpec.hex(id))
-        return apply(obj.toString(2))
+        return applyJson(obj.toString(2))
     }
 
-    fun reset(): Result<OtaRules> = apply(DEFAULT_JSON)
+    fun reset(): Result<OtaRules> = applyJson(DEFAULT_JSON)
 
     /**
      * Fetches the signed envelope `{ "payload_b64": "...", "sig_b64": "..." }`.
@@ -540,7 +540,7 @@ class OtaProtocolRuleManager(context: Context) {
                 val payload = Base64.decode(envelope.getString("payload_b64"), Base64.DEFAULT)
                 val signature = Base64.decode(envelope.getString("sig_b64"), Base64.DEFAULT)
                 if (!verify(payload, signature)) throw SecurityException("Rule manifest signature rejected")
-                apply(String(payload, Charsets.UTF_8)).getOrThrow()
+                applyJson(String(payload, Charsets.UTF_8)).getOrThrow()
             } finally {
                 conn.disconnect()
             }
@@ -1454,7 +1454,7 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions) {
                 }
             }
         }
-        if (model?.caps?.conversationAwareness == true || model?.caps?.personalizedVolume == true) {
+        if (model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
             SectionTitle("Hearing")
             Card {
                 if (model.caps.conversationAwareness) ToggleRow("Conversation Awareness", "Lowers media when you speak · 0x28", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
