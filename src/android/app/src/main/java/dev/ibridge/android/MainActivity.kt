@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        HighRefreshRate.apply(window) // 90/120/144 Hz where the panel supports it
         refreshPermissions()
         startBridgeService()
 
