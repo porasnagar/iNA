@@ -40,7 +40,8 @@ Each change builds one `iNA-apks` artifact (kept 3 days) with:
 
 **Versions are tags.** Bump `versionName` in `app/build.gradle.kts`; the next build tags this
 branch `v<versionName>` and publishes a GitHub Release with both APKs. Pushing a `v*` tag on
-this branch yourself also builds and releases that commit (`.github/workflows/android.yml`).
+this branch yourself also builds and releases that commit (`.github/workflows/android.yml`, present
+only when the repository has an `INA_SYNC_TOKEN` secret with the `workflow` scope).
 
 ### Signing the release build
 
