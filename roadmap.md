@@ -14,3 +14,8 @@
 - [ ] Multi-page site: /, /simulator, /architecture, /hardware, /source with own SEO + sitemap.xml/robots.txt
 - [ ] Each page: unique keyword-rich h1, structured h2/h3, landmarks; minimal meta only
 - [ ] Phone fits laptop height (viewport-bounded); controls beside it; mobile Phone/Controls tabs
+- [ ] Remove "Official iNA · Android 10–16+" hero pill
+- [ ] Floating animation on hero lockup + chameleon banner
+- [ ] framer-motion: page transitions, staggered cards, spring hover/press
+- [ ] 120Hz: GPU-friendly web animations; Android high refresh rate for activities + overlay
+- [ ] Open source: LICENSE, CONTRIBUTING.md, README monorepo, vercel.json, Open Source badge + GitHub link (header, hero, footer)
