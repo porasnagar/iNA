@@ -2049,6 +2049,8 @@ fun AppleCaseOpenPopupSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     message: String? = null,
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
 ) {
     val model = state.model
     Column(
@@ -2134,6 +2136,11 @@ fun AppleCaseOpenPopupSheet(
                 colors = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary),
             ) { Text("Done", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
             PopupStage.PAIRING -> Unit
+        }
+        if (secondaryLabel != null && stage == PopupStage.INFO_UNPAIRED) {
+            TextButton(onClick = onSecondary, modifier = Modifier.fillMaxWidth()) {
+                Text(secondaryLabel, color = InaColors.Primary, fontSize = 14.sp)
+            }
         }
     }
 }
