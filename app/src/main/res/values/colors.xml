@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ina_background">#FF111114</color>
+    <color name="ina_primary">#FF0A84FF</color>
+    <!-- Paper tone of the official iNA app icon -->
+    <color name="ic_launcher_background">#FFF2F4EF</color>
+</resources>
