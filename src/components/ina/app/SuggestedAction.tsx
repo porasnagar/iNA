@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useSim } from "@/lib/ina/store";
-import { suggestionCandidates, suggestNextAction, type SuggestionInput } from "@/lib/ina/suggest";
+import { suggestionCandidates, suggestNextAction, type SuggestionId, type SuggestionInput } from "@/lib/ina/suggest";
 
 /** Contextual "what to do next" card at the top of the connected AirPods screen. */
 export function SuggestedAction() {
@@ -28,7 +28,7 @@ export function SuggestedAction() {
   } : null;
   const currentIds = input ? suggestionCandidates(input).map((c) => c.id).join(",") : "";
   useEffect(() => {
-    actions.forgetClearedSuggestions(currentIds ? (currentIds.split(",") as SuggestionInput["dismissed"][number][]) : []);
+    actions.forgetClearedSuggestions(currentIds ? (currentIds.split(",") as SuggestionId[]) : []);
   }, [actions, currentIds]);
   const suggestion = input ? suggestNextAction(input) : null;
   if (!suggestion) return null;
