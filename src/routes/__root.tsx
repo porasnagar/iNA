@@ -215,7 +215,6 @@ function PageTransition({ children }: { children: ReactNode }) {
       initial={first.current ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={SOFT_SPRING}
-      className="transform-gpu"
     >
       {children}
     </motion.div>
