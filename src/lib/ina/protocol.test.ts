@@ -25,13 +25,14 @@ describe("battery display", () => {
 });
 
 describe("0x07 proximity packet parsing", () => {
-  const bytes = [0x07, 0x19, 0x01, 0x24, 0x20, 0x2b, 0x87, 0x35, 0x03];
+  // Status 0x0B: bit 5 clear → the right AirPod is broadcasting.
+  const bytes = [0x07, 0x19, 0x01, 0x24, 0x20, 0x0b, 0x87, 0x35, 0x03];
 
   it("reads the 16-bit model ID from bytes 3..4", () => {
     expect(parseProximityPacket(bytes, -50)?.modelId).toBe(0x2420);
   });
 
-  it("reads left battery from the high nibble and right from the low nibble of byte 6", () => {
+  it("reads left from the high nibble of byte 6 when the right AirPod is broadcasting", () => {
     const p = parseProximityPacket(bytes, -50);
     expect(p?.left).toBe(80);
     expect(p?.right).toBe(70);
@@ -43,6 +44,20 @@ describe("0x07 proximity packet parsing", () => {
     expect(p?.leftCharging).toBe(true);
     expect(p?.rightCharging).toBe(true);
     expect(p?.caseCharging).toBe(false);
+  });
+
+  it("swaps battery and charging sides when the left AirPod is broadcasting (byte 5 bit 5)", () => {
+    const p = parseProximityPacket([0x07, 0x19, 0x01, 0x24, 0x20, 0x21, 0x87, 0x15, 0x00], -50);
+    expect(p?.left).toBe(70);
+    expect(p?.right).toBe(80);
+    expect(p?.leftCharging).toBe(true);
+    expect(p?.rightCharging).toBe(false);
+  });
+
+  it("reads lid closed from byte 8 bit 3 only while the AirPod is in the case", () => {
+    expect(parseProximityPacket([0x07, 0x19, 0x01, 0x24, 0x20, 0x75, 0x88, 0x05, 0x0a], -50)?.lidClosed).toBe(true);
+    expect(parseProximityPacket([0x07, 0x19, 0x01, 0x24, 0x20, 0x75, 0x88, 0x05, 0x02], -50)?.lidClosed).toBe(false);
+    expect(parseProximityPacket([0x07, 0x19, 0x01, 0x24, 0x20, 0x2b, 0x88, 0x05, 0x0a], -50)?.lidClosed).toBeNull();
   });
 
   it("reads in-ear flags from bits 1 and 3 of byte 5", () => {
@@ -69,7 +84,15 @@ describe("0x07 proximity packet parsing", () => {
       leftCharging: false, rightCharging: false, caseCharging: true, lidCounter: 5,
     });
     const p = parseProximityPacket(encoded, -40);
-    expect(p).toMatchObject({ modelId: 0x2720, left: 40, right: 100, case: 10, rightInEar: true, caseCharging: true, lidCounter: 5 });
+    expect(p).toMatchObject({ modelId: 0x2720, left: 40, right: 100, case: 10, leftInEar: false, rightInEar: true, caseCharging: true, lidCounter: 5, lidClosed: null });
+  });
+
+  it("round-trips an in-case frame with the lid closed", () => {
+    const encoded = encodeProximityPacket({
+      modelId: 0x2420, leftInEar: true, rightInEar: false, left: 60, right: 30, case: 90,
+      leftCharging: true, rightCharging: false, caseCharging: false, lidCounter: 2, lidClosed: true,
+    });
+    expect(parseProximityPacket(encoded, -40)).toMatchObject({ left: 60, right: 30, leftInEar: true, rightInEar: false, leftCharging: true, lidClosed: true, lidCounter: 2 });
   });
 });
 

@@ -221,6 +221,8 @@ export interface ProximityPacket {
   rightCharging: boolean;
   caseCharging: boolean;
   lidCounter: number;
+  /** true = lid closed, false = open, null = this advert doesn't say. */
+  lidClosed: boolean | null;
   rssi: number;
 }
 
@@ -236,42 +238,61 @@ function batteryToNibble(level: number): number {
 /**
  * Parses Apple manufacturer data (company 0x004C stripped) for a 0x07 Proximity Pairing frame.
  * Returns null for any other Continuity type or a truncated frame.
+ *
+ * Byte 5 bit 5 says which AirPod is broadcasting. When it is the left one, byte 6 carries left
+ * in the low nibble and right in the high nibble; when it is the right one they swap, and so do
+ * the charging bits. Byte 8: bits 0-2 lid-open counter, bit 3 lid closed (only meaningful while
+ * the broadcasting AirPod sits in the case, byte 5 bit 6).
+ * Mirrors ProximityPacketParser in iBridgeAndroid.kt.
  */
 export function parseProximityPacket(b: Uint8Array | number[], rssi: number): ProximityPacket | null {
   if (b.length < 9 || b[0] !== PROXIMITY_PAIRING_TYPE) return null;
   const at = (i: number) => (b[i] ?? 0) & 0xff;
   const status = at(5);
+  const leftPrimary = (status & 0x20) !== 0;
+  const podInCase = (status & 0x40) !== 0;
+  const swapEar = !leftPrimary !== podInCase;
+  const hi = (at(6) >> 4) & 0x0f;
+  const lo = at(6) & 0x0f;
   return {
     modelId: (at(3) << 8) | at(4),
-    leftInEar: (status & 0b0000_0010) !== 0,
-    rightInEar: (status & 0b0000_1000) !== 0,
-    left: nibbleToBattery((at(6) >> 4) & 0x0f),
-    right: nibbleToBattery(at(6) & 0x0f),
+    leftInEar: (status & (swapEar ? 0b0000_1000 : 0b0000_0010)) !== 0,
+    rightInEar: (status & (swapEar ? 0b0000_0010 : 0b0000_1000)) !== 0,
+    left: nibbleToBattery(leftPrimary ? lo : hi),
+    right: nibbleToBattery(leftPrimary ? hi : lo),
     case: nibbleToBattery(at(7) & 0x0f),
-    leftCharging: (at(7) & 0b0001_0000) !== 0,
-    rightCharging: (at(7) & 0b0010_0000) !== 0,
-    caseCharging: (at(7) & 0b0100_0000) !== 0,
+    leftCharging: (at(7) & (leftPrimary ? 0x10 : 0x20)) !== 0,
+    rightCharging: (at(7) & (leftPrimary ? 0x20 : 0x10)) !== 0,
+    caseCharging: (at(7) & 0x40) !== 0,
     lidCounter: at(8) & 0x07,
+    lidClosed: podInCase ? (at(8) & 0x08) !== 0 : null,
     rssi,
   };
 }
 
-/** Builds the 0x07 frame a real case would broadcast — used by the simulator. */
-export function encodeProximityPacket(p: Omit<ProximityPacket, "rssi">): Uint8Array {
+/**
+ * Builds the 0x07 frame a real case would broadcast — used by the simulator. The left AirPod
+ * broadcasts; passing lidClosed marks it as sitting in the case.
+ */
+export function encodeProximityPacket(p: Omit<ProximityPacket, "rssi" | "lidClosed"> & { lidClosed?: boolean | null }): Uint8Array {
   const out = new Uint8Array(27);
+  const inCase = p.lidClosed !== undefined && p.lidClosed !== null;
   out[0] = PROXIMITY_PAIRING_TYPE;
   out[1] = 0x19;
   out[2] = 0x01;
   out[3] = (p.modelId >> 8) & 0xff;
   out[4] = p.modelId & 0xff;
-  out[5] = 0x01 | (p.leftInEar ? 0b10 : 0) | (p.rightInEar ? 0b1000 : 0) | 0x20;
-  out[6] = (batteryToNibble(p.left) << 4) | batteryToNibble(p.right);
+  // Left broadcasting (bit 5); in the case (bit 6) the in-ear bits swap sides.
+  const leftBit = inCase ? 0b1000 : 0b10;
+  const rightBit = inCase ? 0b10 : 0b1000;
+  out[5] = 0x01 | 0x20 | (inCase ? 0x40 : 0) | (p.leftInEar ? leftBit : 0) | (p.rightInEar ? rightBit : 0);
+  out[6] = (batteryToNibble(p.right) << 4) | batteryToNibble(p.left);
   out[7] =
     batteryToNibble(p.case) |
     (p.leftCharging ? 0x10 : 0) |
     (p.rightCharging ? 0x20 : 0) |
     (p.caseCharging ? 0x40 : 0);
-  out[8] = p.lidCounter & 0x07;
+  out[8] = (p.lidCounter & 0x07) | (p.lidClosed ? 0x08 : 0);
   // Bytes 9..26 carry the encrypted payload on real hardware; zero-filled here.
   return out;
 }
