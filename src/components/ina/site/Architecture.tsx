@@ -3,9 +3,10 @@ import { AppWindow, Bluetooth, Cable, RefreshCcwDot } from "lucide-react";
 import { BRAND } from "@/components/ina/brand";
 import { PACKET_LAYOUT } from "@/lib/ina/catalog";
 
+import { FloatingArt, Reveal, Stagger, StaggerItem } from "./motion";
 import { SectionHeading } from "./SectionHeading";
 
-const LAYERS = [
+export const LAYERS = [
   {
     n: "01",
     icon: Bluetooth,
@@ -48,18 +49,21 @@ export function Architecture() {
           Apple accessories speak a handful of Bluetooth protocols to iPhone. iNA speaks them too, from an ordinary Android app — no root, no Magisk
           modules and no iOS virtual machine.
         </SectionHeading>
-        <div className="overflow-hidden rounded-[40px] bg-paper shadow-plate">
-          <img src={BRAND.banner} alt="The iNA chameleon perched next to the bitten apple á" width={1800} height={1005} className="w-full" />
-        </div>
+        <FloatingArt>
+          <div className="overflow-hidden rounded-[40px] bg-paper shadow-plate">
+            <img src={BRAND.banner} alt="The iNA chameleon perched next to the bitten apple á" width={1800} height={1005} className="w-full" />
+          </div>
+        </FloatingArt>
       </header>
 
       <section aria-labelledby="layers" className="mt-20">
         <h2 id="layers" className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Four layers, all in user space
         </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <Stagger as="div" className="mt-8 grid gap-4 md:grid-cols-2">
           {LAYERS.map((l) => (
-            <article key={l.n} className="flex flex-col rounded-[28px] border border-border bg-card/50 p-6 sm:p-8">
+            <StaggerItem as="div" key={l.n} interactive={false}>
+            <article className="flex h-full flex-col rounded-[28px] border border-border bg-card/50 p-6 sm:p-8">
               <div className="flex items-center justify-between">
                 <span className="grid size-11 place-items-center rounded-2xl bg-primary/12 text-primary">
                   <l.icon className="size-5" />
@@ -80,10 +84,12 @@ export function Architecture() {
                 ))}
               </ul>
             </article>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
+      <Reveal>
       <section aria-labelledby="packet" className="mt-16 rounded-[28px] border border-border bg-card/50 p-6 sm:p-8">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="packet" className="text-2xl font-semibold tracking-tight">Anatomy of a 0x07 Proximity Pairing packet</h2>
@@ -101,6 +107,7 @@ export function Architecture() {
             ))}
           </dl>
       </section>
+      </Reveal>
     </div>
   );
 }

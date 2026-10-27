@@ -4,6 +4,7 @@ import { ProductImage } from "@/components/ina/product";
 import { HARDWARE_FAMILIES } from "@/lib/ina/catalog";
 import { BUILT_IN_MODELS } from "@/lib/ina/protocol";
 
+import { Reveal } from "./motion";
 import { SectionHeading } from "./SectionHeading";
 
 function modelsFor(family: (typeof HARDWARE_FAMILIES)[number]) {
@@ -38,7 +39,7 @@ export function HardwareMatrix() {
           Compatibility matrix
         </h2>
         <p className="mt-2 text-muted-foreground">Every model, its chipset, how iNA connects to it and the features you get.</p>
-        <div className="mt-8 overflow-hidden rounded-[28px] border border-border">
+        <Reveal className="mt-8 overflow-hidden rounded-[28px] border border-border">
           <div aria-hidden className="hidden grid-cols-[240px_minmax(0,1.3fr)_200px_minmax(0,1fr)] gap-6 border-b border-border bg-card/60 px-6 py-3 font-mono text-[11px] uppercase tracking-wider text-muted-foreground lg:grid">
             <span>Device</span>
             <span>Models</span>
@@ -78,7 +79,7 @@ export function HardwareMatrix() {
               </ul>
             </article>
           ))}
-        </div>
+        </Reveal>
         </section>
     </div>
   );
