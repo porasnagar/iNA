@@ -43,17 +43,17 @@ export function ProximitySheet() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end">
-      <button type="button" aria-label="Dismiss" onClick={actions.dismissSheet} className="absolute inset-0 bg-scrim animate-in fade-in duration-300" />
+      <button type="button" aria-label="Dismiss" onClick={actions.dismissSheet} className="absolute inset-0 glass-scrim animate-in fade-in duration-300" />
       <div
         role="dialog"
         aria-label={`${name} nearby`}
-        className="relative mx-2 mb-2 rounded-[42px] bg-sheet px-6 pb-6 pt-5 text-center shadow-sheet backdrop-blur-2xl animate-in slide-in-from-bottom-full duration-500 ease-out"
+        className="relative mx-2 mb-2 rounded-[42px] px-6 pb-6 pt-5 text-center shadow-sheet liquid-glass animate-in slide-in-from-bottom-full duration-500 ease-out"
       >
         <button
           type="button"
           onClick={actions.dismissSheet}
           aria-label="Close"
-          className="absolute right-4 top-4 grid size-8 place-items-center rounded-full bg-foreground/10 text-muted-foreground"
+          className="absolute right-4 top-4 grid size-8 place-items-center rounded-full bg-glass-tile text-muted-foreground"
         >
           <X className="size-4" />
         </button>

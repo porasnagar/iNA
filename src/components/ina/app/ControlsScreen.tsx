@@ -38,6 +38,7 @@ function FitTest() {
       setResult({ left: "good", right: state.accessory.looseRightTip ? "adjust" : "good" });
       setPhase("done");
       actions.log("AAP", "Ear Tip Fit Test complete", "04 00 04 00 1B 00 01 01");
+      actions.markFitTested();
     }, 3200);
     return () => window.clearTimeout(t);
   }, [phase, actions, state.accessory.looseRightTip]);

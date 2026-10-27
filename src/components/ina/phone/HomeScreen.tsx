@@ -84,7 +84,7 @@ export function HomeScreen() {
             <button
               type="button"
               onClick={() => actions.openCase()}
-              className="mx-auto flex items-center gap-2 rounded-full bg-sheet px-4 py-2 text-xs font-medium backdrop-blur-xl"
+              className="mx-auto flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium liquid-glass"
             >
               <span className="size-2 animate-pulse rounded-full bg-success" />
               Simulate: open AirPods case nearby
@@ -95,7 +95,7 @@ export function HomeScreen() {
               <Icon key={a.name} app={{ ...a, name: "" }} onClick={demo(a.name)} />
             ))}
           </div>
-          <div className="flex h-12 items-center gap-3 rounded-full bg-sheet px-4 text-sm text-muted-foreground backdrop-blur-xl">
+          <div className="flex h-12 items-center gap-3 rounded-full px-4 text-sm text-muted-foreground liquid-glass">
             <Search className="size-4" />
             Search
           </div>
