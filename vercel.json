@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm install",
-  "buildCommand": "NITRO_PRESET=vercel npm run build",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!src/android/app/build'"
+  "installCommand": "bun install",
+  "buildCommand": "NITRO_PRESET=vercel bun run build"
 }
