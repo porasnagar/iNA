@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">iNA</string>
+
+    <!-- Quick Settings tile -->
+    <string name="tile_label">iNA Noise Control</string>
+    <string name="tile_unavailable">Not connected</string>
+
+    <!-- Notification channels -->
+    <string name="channel_status">Live status</string>
+    <string name="channel_status_desc">Battery levels and noise control for your connected Apple accessory</string>
+    <string name="channel_popup">Case-open pop-up</string>
+    <string name="notification_listener_label">iNA Apple Watch notifications</string>
+
+    <!-- Live status notification -->
+    <string name="status_listening">Listening for Apple accessories</string>
+    <string name="status_listening_desc">Open your case near this phone to connect</string>
+
+    <!-- Case-open pop-up -->
+    <string name="popup_unknown_accessory">Apple accessory</string>
+    <string name="popup_tap_to_connect">Tap to connect</string>
+    <string name="popup_connect">Connect</string>
+    <string name="popup_done">Done</string>
+    <string name="popup_left">Left</string>
+    <string name="popup_right">Right</string>
+    <string name="popup_case">Case</string>
+    <string name="battery_unknown">--%</string>
+
+    <!-- Listening modes -->
+    <string name="mode_anc">Noise Cancellation</string>
+    <string name="mode_transparency">Transparency</string>
+    <string name="mode_adaptive">Adaptive</string>
+    <string name="mode_off">Off</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_bluetooth_title">Find nearby Apple devices</string>
+    <string name="onboarding_overlay_title">Show the case-open pop-up</string>
+    <string name="onboarding_companion_title">Stay connected in the background</string>
+    <string name="onboarding_notifications_title">Mirror notifications to Apple Watch</string>
+    <string name="connect_device_title">Connect a Device</string>
+    <string name="learn_more">Learn More</string>
+    <string name="preview_connected_ui">Preview Connected UI</string>
+</resources>
