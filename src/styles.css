@@ -169,6 +169,7 @@
 /* Simulated phone › Settings › Appearance › Light: the Apple light system palette, same single blue accent. */
 .phone-light {
   color-scheme: light;
+  color: var(--foreground);
   --background: oklch(0.967 0.003 286);
   --foreground: oklch(0.17 0.003 270);
   --card: oklch(1 0 0);
