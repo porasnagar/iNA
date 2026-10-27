@@ -49,6 +49,7 @@
   --color-island: var(--island);
   --color-bezel: var(--bezel);
   --color-scrim: var(--scrim);
+  --color-paper: var(--paper);
   --color-tint-blue: var(--tint-blue);
   --color-tint-green: var(--tint-green);
   --color-tint-orange: var(--tint-orange);
@@ -107,6 +108,11 @@
   --tint-purple: oklch(0.32 0.004 270);
   --tint-teal: oklch(0.32 0.004 270);
   --tint-yellow: oklch(0.32 0.004 270);
+
+  /* Paper plate behind the official iNA artwork (the art's own cream background). Brand green lives only in the art. */
+  --paper: oklch(0.966 0.006 125);
+  --gradient-brand-glow: radial-gradient(55% 60% at 50% 45%, oklch(0.3 0.04 260 / 0.55), transparent 70%);
+  --shadow-plate: 0 50px 100px -30px oklch(0 0 0 / 0.75), 0 0 0 1px oklch(1 0 0 / 0.06);
 
   --wallpaper: radial-gradient(120% 70% at 30% 0%, oklch(0.32 0.01 260) 0%, transparent 65%), oklch(0.12 0.003 270);
   --gradient-logo: linear-gradient(160deg, oklch(1 0 0 / 0.22), oklch(1 0 0 / 0.06));
@@ -176,6 +182,12 @@
 }
 @utility bg-logo {
   background: var(--gradient-logo);
+}
+@utility bg-brand-glow {
+  background: var(--gradient-brand-glow);
+}
+@utility shadow-plate {
+  box-shadow: var(--shadow-plate);
 }
 @utility bg-stage {
   background: var(--gradient-stage);

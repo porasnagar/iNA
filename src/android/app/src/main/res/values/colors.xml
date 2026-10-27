@@ -2,5 +2,6 @@
 <resources>
     <color name="ina_background">#FF111114</color>
     <color name="ina_primary">#FF0A84FF</color>
-    <color name="ic_launcher_background">#FF1C1C1F</color>
+    <!-- Paper tone of the official iNA app icon -->
+    <color name="ic_launcher_background">#FFF2F4EF</color>
 </resources>

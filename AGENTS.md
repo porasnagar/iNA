@@ -21,3 +21,5 @@
 - On Android, glass comes from `LocalGlass` (provided by `InaTheme` from `InaSettings.reduceTransparency`); set `backdropBlurred` only where something actually blurs the backdrop, so unblurred surfaces stay near-opaque for legibility.
 - Release APK signing reads `INA_KEYSTORE_FILE` / `INA_KEYSTORE_PASSWORD` / `INA_KEY_ALIAS` / `INA_KEY_PASSWORD` env vars and falls back to debug signing; release lint is advisory so CI never fails on it.
 
+- Binary Android resources (launcher PNGs in `src/android/**/res/mipmap-*`) are real files so GitHub CI can build them; `android-source.ts` excludes `*.png` from the raw glob and adds them to the zip via a `?url` glob.
+- Official brand art is served from Lovable Assets pointers in `src/assets/ina-*.asset.json` via `src/components/ina/brand.ts`; favicon/manifest icons are real files in `public/`.
