@@ -19,7 +19,7 @@
   <i>Who are we to confirm or deny? We are just a chameleon leaping gracefully over the walled garden fence.</i>
 </p>
 
-[Interactive Web Simulator](https://ina.porasnagar.dev/simulator) · [Android Standalone App](https://github.com/porasnagar/iNA/tree/android) · [Hardware Compatibility](#hardware-compatibility) · [Architecture](#under-the-hood-4-tier-l2cap-engine) · [Releases & APKs](https://github.com/porasnagar/iNA/releases)
+[Interactive Web Simulator](https://ina.porasnagar.dev/simulator) · [Android Standalone App](https://github.com/porasnagar/iNA/tree/android) · [Project Wiki](wiki/Home.md) · [Hardware Compatibility](#hardware-compatibility) · [Architecture](#under-the-hood-4-tier-l2cap-engine) · [Releases & APKs](https://github.com/porasnagar/iNA/releases)
 
 </div>
 
@@ -172,6 +172,7 @@ iNA is engineered around three uncompromised privacy principles:
 
 ## Open Source Governance
 
+- [Project Wiki](wiki/Home.md): In-depth architecture guides, protocol specifications, packet layouts, and troubleshooting.
 - [Contributing Guide](CONTRIBUTING.md): Workflow guidelines, branch layout, and testing standards.
 - [Code of Conduct](CODE_OF_CONDUCT.md): Contributor Covenant v2.1 community standards.
 - [Security Policy](SECURITY.md): Vulnerability reporting procedures.

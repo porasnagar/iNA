@@ -1,0 +1,47 @@
+name: Sync Wiki to GitHub Wiki
+
+on:
+  push:
+    branches: [main, website]
+    paths:
+      - "wiki/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    name: Sync to GitHub Wiki
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push to GitHub Wiki
+        env:
+          TOKEN: ${{ secrets.INA_SYNC_TOKEN || secrets.SYNC_TOKEN || secrets.GH_PAT || secrets.PAT || github.token }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "porasnagar"
+          git config --global user.email "86702426+porasnagar@users.noreply.github.com"
+
+          wiki_repo="https://x-access-token:${TOKEN}@github.com/porasnagar/iNA.wiki.git"
+
+          tmp_dir=$(mktemp -d)
+          echo "Cloning wiki repo..."
+          if git clone "$wiki_repo" "$tmp_dir" 2>/dev/null; then
+            cd "$tmp_dir"
+            rm -rf *
+            cp -r "${GITHUB_WORKSPACE}/wiki/"* .
+            git add -A
+            if ! git diff-index --quiet HEAD; then
+              git commit -m "docs: sync wiki documentation from main repository"
+              git push origin master || git push origin main
+              echo "Wiki successfully updated!"
+            else
+              echo "No wiki changes to commit."
+            fi
+          else
+            echo "::notice::GitHub Wiki repository is not yet initialized. Enable Wikis in repository Settings -> Features -> Wikis and create your first page to activate automated wiki sync."
+          fi
