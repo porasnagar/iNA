@@ -7,3 +7,5 @@
 - [x] Suggested next action at top of AirPods screen (prototype + Android)
 - [x] Release APK build alongside debug on GitHub Actions
 - [x] Native Android Watch / AirTag / HomePod screens
+- [x] Official iNA brand assets: favicon, header, phone launcher, Android launcher icon
+- [x] Product-site home: hero, live simulator, architecture, hardware matrix, developer center
