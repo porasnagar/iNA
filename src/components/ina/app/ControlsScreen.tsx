@@ -15,7 +15,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSim, type StemAction } from "@/lib/ina/store";
 import { cn } from "@/lib/utils";
-import { PreviewToggleCard } from "./ConnectScreen";
 import { Group, ScreenHeader, Segmented, ToggleRow } from "./ui";
 
 const STEM_OPTIONS: { value: StemAction; label: string }[] = [
@@ -98,7 +97,6 @@ export function ControlsScreen() {
           <p className="mt-3 text-[15px] font-semibold">Connect a device to adjust controls</p>
           <p className="mt-1 text-xs text-muted-foreground">Ear detection, gestures, fit test and Find My appear here once an accessory is connected.</p>
         </div>
-        <PreviewToggleCard className="mx-4" />
       </div>
     );
   }

@@ -6,27 +6,11 @@ import { OtherDeviceScreen, OtherDevicesList, type OtherDeviceKind } from "./Oth
 import { BatteryRing } from "@/components/ina/BatteryRing";
 import { ProductImage } from "@/components/ina/product";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { HARDWARE_FAMILIES, OEM_SKINS, PACKET_LAYOUT } from "@/lib/ina/catalog";
 import { hexId } from "@/lib/ina/protocol";
 import { useSim } from "@/lib/ina/store";
 import { cn } from "@/lib/utils";
 import { Chip, ScreenHeader, Segmented } from "./ui";
-
-export function PreviewToggleCard({ className }: { className?: string }) {
-  const { state, actions } = useSim();
-  return (
-    <label className={cn("flex cursor-pointer items-center gap-3 rounded-[20px] border border-primary/30 bg-primary/10 p-4", className)}>
-      <span className="min-w-0 flex-1 pr-3">
-        <span className="block text-[15px] font-semibold">Preview Connected UI</span>
-        <span className="block text-[12px] leading-snug text-muted-foreground">
-          Explore the connected screens with simulated accessory values.
-        </span>
-      </span>
-      <Switch checked={state.previewConnected} onCheckedChange={actions.setPreviewConnected} className="shrink-0" aria-label="Preview Connected UI" />
-    </label>
-  );
-}
 
 function LearnMore() {
   const { models } = useSim();
@@ -197,7 +181,6 @@ export function ConnectScreen() {
         <Button size="lg" className="h-12 w-full rounded-2xl text-[15px] font-semibold" onClick={actions.openCase}>
           Simulate opening the case
         </Button>
-        <PreviewToggleCard />
       </div>
 
       <OtherDevicesList onPick={setOther} />
