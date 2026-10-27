@@ -12,7 +12,12 @@
 ## Project rules
 
 - The native Android project lives as plain text under `src/android/` and is loaded with `import.meta.glob(..., { query: "?raw" })` by `src/lib/android-source.ts`; edit Kotlin/XML there so the viewer and the zip stay in sync. Tailwind excludes that folder via `@source not`.
-- `EmbeddedProductArt.kt` in `src/android/` is a stub; the real Base64 version is generated in the browser at download time from `src/assets/*.png` (keeps the repo and viewer small).
+- Android product art is real PNGs in `src/android/app/src/main/res/drawable-nodpi/product_*.png` (downscaled copies of `src/assets/*.png`) referenced by `ProductArtKey.drawable`; regenerate them when the web renders change, because GitHub CI builds only what is in the repo.
+- Developer-only Android UI (Protocol Rules tab, Preview Connected UI, hex/tier labels, tech permission lines) is gated by `BuildConfig.DEBUG` / `devOnly(...)` so release APKs stay minimal; the simulated phone mirrors the release app and keeps its preview switch only in the website's Simulator panel.
+- Case-open pop-up frequency is decided only by `CasePopupGate` (in-app sheet, overlay, fallback Activity, heads-up); every close path must report `onDismissed`/`onHidden`, and `CasePopupGateTest.kt` covers the rules.
+- Connect prefers AirPods already bonded in Android Bluetooth, then CompanionDeviceManager + createBond; the AAP channel tries a classic L2CAP `BluetoothSocket` via HiddenApiBypass first, and the app reports not connected rather than claiming a link it doesn't have.
+- Android colours come from `InaColors` (snapshot-state palette set by `InaTheme` from `InaSettings.appearance`); the simulated phone's light mode is the `.phone-light` token override on the phone screen. Never hardcode surface/text colours in either.
+- Android Kotlin can be compiled and its JVM/Robolectric tests run in the sandbox with a Nix JDK 17 + downloaded SDK/Gradle 8.11.1 against a /tmp copy of `src/android` (never build inside the repo).
 - Prototype protocol logic (`src/lib/ina/protocol.ts`, `ota.ts`) mirrors `AppleProtocolSpec` / `ProximityPacketParser` / `OtaProtocolRuleManager` in Kotlin; change both sides together and keep `protocol.test.ts` passing.
 - All prototype state lives in one React context (`src/lib/ina/store.tsx`); every simulated BLE packet is encoded then parsed through the real parser so the UI matches native behaviour.
 - Disconnected battery values are always -1 and render as `--%`; never derive accessory battery from anything else.

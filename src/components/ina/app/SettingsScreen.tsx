@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { BatteryCharging, Bell, Bluetooth, Code2, Contrast, Info, Layers, Power, RotateCcw, Unlink, type LucideIcon } from "lucide-react";
 
-import { useSim, type PermissionKey } from "@/lib/ina/store";
+import { useSim, type Appearance, type PermissionKey } from "@/lib/ina/store";
 import { cn } from "@/lib/utils";
-import { PreviewToggleCard } from "./ConnectScreen";
-import { Group, Row, ScreenHeader, ToggleRow } from "./ui";
+import { Group, Row, ScreenHeader, Segmented, ToggleRow } from "./ui";
 
 const PERMS: { key: PermissionKey; title: string; detail: string; icon: LucideIcon; tint: string }[] = [
   { key: "bluetooth", title: "Nearby devices", detail: "BLUETOOTH_SCAN · BLUETOOTH_CONNECT", icon: Bluetooth, tint: "bg-tint-blue" },
@@ -18,9 +17,20 @@ export function SettingsScreen() {
   return (
     <div className="space-y-5 pb-6">
       <ScreenHeader title="Settings" />
-      <PreviewToggleCard className="mx-4" />
-
-      <Group title="Display" footer="Makes the case pop-up, Quick Settings, tab bar and other sheets solid for higher contrast.">
+      <Group title="Display" footer="Reduce Transparency makes the case pop-up, Quick Settings, tab bar and other sheets solid for higher contrast.">
+        <div className="flex min-h-12 items-center gap-3 px-4 py-2">
+          <span className="shrink-0 text-[15px]">Appearance</span>
+          <Segmented
+            className="min-w-0 flex-1"
+            value={state.appearance}
+            onChange={(v) => actions.setAppearance(v as Appearance)}
+            options={[
+              { value: "system", label: "Automatic" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
+          />
+        </div>
         <ToggleRow
           icon={Contrast}
           title="Reduce Transparency"

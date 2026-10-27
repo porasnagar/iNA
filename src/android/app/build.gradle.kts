@@ -20,7 +20,7 @@ android {
         targetSdk = 36 // Android 16
         // Every CI build gets a higher versionCode so release APKs install over each other.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "1.0.0"
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -35,6 +35,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug builds keep developer tools: Protocol Rules tab, Preview Connected UI, hex labels.
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -55,6 +59,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG hides developer-only screens from release APKs.
+        buildConfig = true
     }
 }
 
@@ -81,4 +87,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.9.0")
     implementation("androidx.savedstate:savedstate-ktx:1.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Reaches the hidden classic L2CAP BluetoothSocket constructor AirPods need, without root.
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

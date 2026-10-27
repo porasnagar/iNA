@@ -97,6 +97,8 @@ export interface SimState {
   lastSync: string | null;
   /** Display setting: solid surfaces instead of Liquid Glass. */
   reduceTransparency: boolean;
+  /** Display › Appearance (mirrors InaSettings.appearance on Android). */
+  appearance: Appearance;
   /** Ear Tip Fit Test has completed at least once (feeds the suggested action). */
   fitTested: boolean;
   log: LogEntry[];
@@ -108,6 +110,8 @@ export const PAIRING_STEPS = [
   "A2DP + HFP profile connect",
   "L2CAP PSM handshake (AAP)",
 ];
+
+export type Appearance = "system" | "light" | "dark";
 
 const PERSIST_KEY = "ina-prototype-v1";
 
@@ -156,6 +160,7 @@ const initialState: SimState = {
   otaSyncing: false,
   lastSync: null,
   reduceTransparency: false,
+  appearance: "system",
   fitTested: false,
   log: [],
 };
@@ -195,6 +200,7 @@ function useSimStore() {
           manifest: saved.manifest ?? s.manifest,
           lastSync: saved.lastSync ?? s.lastSync,
           reduceTransparency: saved.reduceTransparency ?? s.reduceTransparency,
+          appearance: saved.appearance ?? s.appearance,
           fitTested: saved.fitTested ?? s.fitTested,
           accessory: saved.accessory ? { ...s.accessory, ...saved.accessory, leftInEar: false, rightInEar: false } : s.accessory,
         }));
@@ -208,10 +214,10 @@ function useSimStore() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, fitTested } = state;
+    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested } = state;
     window.localStorage.setItem(
       PERSIST_KEY,
-      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, fitTested }),
+      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, appearance, fitTested }),
     );
   }, [hydrated, state]);
 
@@ -504,6 +510,9 @@ function useSimStore() {
       },
       setReduceTransparency(on: boolean) {
         set((s) => withLog({ ...s, reduceTransparency: on }, entry("UI", `Reduce Transparency ${on ? "on · solid surfaces" : "off · Liquid Glass"}`)));
+      },
+      setAppearance(appearance: Appearance) {
+        set((s) => withLog({ ...s, appearance }, entry("UI", `Appearance ${appearance}`)));
       },
       markFitTested() {
         set((s) => ({ ...s, fitTested: true }));
