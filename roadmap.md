@@ -21,3 +21,8 @@
 - [x] Open source: LICENSE, CONTRIBUTING.md, README monorepo, vercel.json, Open Source badge + GitHub link (header, hero, footer)
 - [x] Home keeps the long premium scroll (sections reveal on scroll) like the liked Live preview, with links into the dedicated pages
 - [x] GitHub repo porasnagar/iNA: website + android branches, tag-based APK releases
+- [x] Android: product pictures shipped as real images (were blank in GitHub builds)
+- [x] Android: Connect really connects (bonded AirPods first, real L2CAP link, honest status)
+- [x] Case-open pop-up stays closed after closing it (no repeats)
+- [x] Preview Connected UI and developer tools only in the debug build; release stays minimal
+- [x] Light mode (Automatic / Light / Dark) in the Android app and the simulated phone
