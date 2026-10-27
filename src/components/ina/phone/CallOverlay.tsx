@@ -20,7 +20,7 @@ export function CallOverlay() {
   return (
     <div className="absolute inset-x-2 top-12 z-30 rounded-[28px] p-4 shadow-2xl liquid-glass animate-in slide-in-from-top duration-300">
       <div className="flex items-center gap-3">
-        <div className="grid size-11 shrink-0 place-items-center rounded-full bg-tint-teal text-lg font-semibold text-foreground">M</div>
+        <div className="grid size-11 shrink-0 place-items-center rounded-full bg-tint-teal text-lg font-semibold text-primary-foreground">M</div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{call.caller}</div>
           <div className="truncate text-xs text-muted-foreground">

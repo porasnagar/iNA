@@ -50,8 +50,6 @@
   --color-bezel: var(--bezel);
   --color-scrim: var(--scrim);
   --color-paper: var(--paper);
-  --color-ink: var(--ink);
-  --color-brand-deep: var(--brand-deep);
   --color-tint-blue: var(--tint-blue);
   --color-tint-green: var(--tint-green);
   --color-tint-orange: var(--tint-orange);
@@ -83,9 +81,8 @@
   --elevated: oklch(0.255 0.005 270);
   --popover: oklch(0.205 0.004 270);
   --popover-foreground: oklch(0.975 0 0);
-  /* Brand accent: the iNA chameleon green, with dark ink on top for contrast */
-  --primary: oklch(0.8 0.15 160);
-  --primary-foreground: oklch(0.2 0.02 165);
+  --primary: oklch(0.63 0.2 255);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.255 0.005 270);
   --secondary-foreground: oklch(0.975 0 0);
   --muted: oklch(0.255 0.005 270);
@@ -98,7 +95,7 @@
   --warning: oklch(0.8 0.17 70);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.8 0.15 160);
+  --ring: oklch(0.63 0.2 255);
   --sheet: oklch(0.22 0.004 270 / 0.86);
   --island: oklch(0 0 0);
   --bezel: oklch(0.07 0 0);
@@ -112,12 +109,10 @@
   --tint-teal: oklch(0.32 0.004 270);
   --tint-yellow: oklch(0.32 0.004 270);
 
-  /* Brand plates: the cream paper and ink of the official iNA artwork */
+  /* Paper plate behind the official iNA artwork (the art's own cream background). Brand green lives only in the art. */
   --paper: oklch(0.966 0.006 125);
-  --ink: oklch(0.22 0.008 265);
-  --brand-deep: oklch(0.68 0.13 162);
-  --gradient-brand-glow: radial-gradient(55% 60% at 50% 45%, oklch(0.8 0.15 160 / 0.22), transparent 70%);
-  --shadow-plate: 0 50px 100px -30px oklch(0.8 0.15 160 / 0.25), 0 30px 60px -30px oklch(0 0 0 / 0.8);
+  --gradient-brand-glow: radial-gradient(55% 60% at 50% 45%, oklch(0.3 0.04 260 / 0.55), transparent 70%);
+  --shadow-plate: 0 50px 100px -30px oklch(0 0 0 / 0.75), 0 0 0 1px oklch(1 0 0 / 0.06);
 
   --wallpaper: radial-gradient(120% 70% at 30% 0%, oklch(0.32 0.01 260) 0%, transparent 65%), oklch(0.12 0.003 270);
   --gradient-logo: linear-gradient(160deg, oklch(1 0 0 / 0.22), oklch(1 0 0 / 0.06));
@@ -136,19 +131,19 @@
   --glass-scrim: oklch(0 0 0 / 0.32);
   --glass-scrim-blur: 10px;
 
-  --chart-1: oklch(0.8 0.15 160);
+  --chart-1: oklch(0.63 0.2 255);
   --chart-2: oklch(0.78 0.2 148);
   --chart-3: oklch(0.8 0.17 70);
   --chart-4: oklch(0.6 0.2 300);
   --chart-5: oklch(0.66 0.22 25);
   --sidebar: oklch(0.17 0.004 270);
   --sidebar-foreground: oklch(0.975 0 0);
-  --sidebar-primary: oklch(0.8 0.15 160);
-  --sidebar-primary-foreground: oklch(0.2 0.02 165);
+  --sidebar-primary: oklch(0.63 0.2 255);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.255 0.005 270);
   --sidebar-accent-foreground: oklch(0.975 0 0);
   --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.8 0.15 160);
+  --sidebar-ring: oklch(0.63 0.2 255);
 }
 
 /* Display › Reduce Transparency: every glass surface becomes an opaque, high-contrast card. */

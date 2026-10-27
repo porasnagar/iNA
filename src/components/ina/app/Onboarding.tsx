@@ -175,7 +175,7 @@ export function Onboarding() {
         <ul className="mt-6 space-y-2">
           {STEPS.map((s) => (
             <li key={s.key} className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3">
-              <span className={cn("grid size-7 place-items-center rounded-lg text-foreground", s.tint)}>
+              <span className={cn("grid size-7 place-items-center rounded-lg text-primary-foreground", s.tint)}>
                 <s.icon className="size-4" />
               </span>
               <span className="min-w-0 flex-1 truncate pr-3 text-sm">{s.title}</span>
@@ -205,7 +205,7 @@ export function Onboarding() {
       <div className="mt-2 text-xs text-muted-foreground">
         Step {index} of {STEPS.length}
       </div>
-      <div className={cn("mt-10 grid size-16 place-items-center rounded-[20px] text-foreground", step.tint)}>
+      <div className={cn("mt-10 grid size-16 place-items-center rounded-[20px] text-primary-foreground", step.tint)}>
         <step.icon className="size-8" />
       </div>
       <h1 className="mt-5 text-[28px] font-bold leading-tight tracking-tight">{step.title}</h1>

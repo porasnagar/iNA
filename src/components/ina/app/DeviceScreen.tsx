@@ -67,7 +67,7 @@ export function DeviceScreen() {
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className={cn("w-1 origin-bottom rounded-full bg-foreground", state.media.playing ? "animate-wave" : "scale-y-50")}
+                className={cn("w-1 origin-bottom rounded-full bg-primary-foreground", state.media.playing ? "animate-wave" : "scale-y-50")}
                 style={{ height: "100%", animationDelay: `${i * 0.15}s` }}
               />
             ))}
