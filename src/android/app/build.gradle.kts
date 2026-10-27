@@ -8,7 +8,7 @@ plugins {
 
 // Release signing comes from env vars set by GitHub Actions (see README). When they are
 // missing, the release APK is signed with the debug key so it still installs.
-val releaseKeystore: File? = System.getenv("INA_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+val releaseKeystore: java.io.File? = System.getenv("INA_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
 
 android {
     namespace = "dev.ibridge.android"

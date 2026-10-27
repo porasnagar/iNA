@@ -35,6 +35,9 @@ const DESCRIPTIONS: Record<string, string> = {
   "AndroidManifest.xml": "Permissions, services, tile, notification listener and boot receiver",
   "strings.xml": "User-facing strings",
   "EmbeddedProductArt.kt": "Base64 product renders — generated with real images on download",
+  "AppleDevices.kt": "Apple Watch (GATT heart rate), AirTag (Find My scanner) and HomePod (Bonjour) screens",
+  "LiquidGlass.kt": "Liquid Glass surfaces, window blur and Reduce Transparency",
+  "NextActionAdvisor.kt": "Suggested next action card on the AirPods screen",
 };
 
 function languageOf(name: string): SourceLanguage {

@@ -17,6 +17,9 @@ Package `dev.ibridge.android` · Android 10 (API 29) to Android 16 (API 36) · z
 | `IBridgeForegroundService.kt` | BLE 0x004C / 0x07 scanner, case-open trigger, live status notification, boot receiver, ANCS bridge |
 | `CasePopupOverlayActivity.kt` | `TYPE_APPLICATION_OVERLAY` bottom sheet, translucent fallback Activity, one-tap pairing |
 | `InaQuickSettingsTileService.kt` | "iNA Noise Control" tile: ANC → Transparency → Adaptive → Off |
+| `AppleDevices.kt` | Apple Watch (GATT heart rate/battery + ANCS), AirTag (Find My 0x12 scanner, distance, Play Sound), HomePod (Bonjour discovery) |
+| `LiquidGlass.kt` | Liquid Glass surfaces, Android 12+ blur-behind, Reduce Transparency |
+| `NextActionAdvisor.kt` | Suggested next action on the AirPods screen |
 | `EmbeddedProductArt.kt` | Base64 copies of the product renders (also in `res/drawable-nodpi/`) |
 
 ## OTA rules
@@ -26,5 +29,29 @@ Package `dev.ibridge.android` · Android 10 (API 29) to Android 16 (API 36) · z
 until then remote manifests are rejected and the bundled rules stay active.
 
 ## Build on GitHub Actions
-Connect this project to GitHub, then open the **Actions** tab → "Build iNA APK" → download the `iNA-debug-apk` artifact.
+
+Connect this project to GitHub, then open **Actions** → "Build iNA APK". Each run produces two artifacts:
+
+- `iNA-debug-apk` — test build, debuggable.
+- `iNA-release-apk` — optimised (R8) release build plus `mapping.txt`.
+
+Push a tag like `v1.0.0` to also attach both APKs to a GitHub Release.
+
+### Signing the release build
+
+Without secrets the release APK is signed with a throwaway debug key, so it installs but cannot
+update an APK built on another run. To sign with your own key, add these repository secrets
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | Value |
+| --- | --- |
+| `INA_KEYSTORE_BASE64` | `base64 -w0 ina-release.jks` |
+| `INA_KEYSTORE_PASSWORD` | keystore password |
+| `INA_KEY_ALIAS` | key alias |
+| `INA_KEY_PASSWORD` | key password |
+
+Create a keystore once with
+`keytool -genkeypair -v -keystore ina-release.jks -alias ina -keyalg RSA -keysize 4096 -validity 10000`.
+
 Toolchain is pinned: Gradle 8.11.1, AGP 8.10.1, Kotlin 2.1.21, JDK 17. Do not bump Gradle to 9.x without upgrading AGP to 9.x too.
+Release lint is advisory (`checkReleaseBuilds = false`) so CI never fails on lint.
