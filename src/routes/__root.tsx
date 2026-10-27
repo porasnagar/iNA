@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { InaLogo } from "@/components/ina/InaLogo";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -92,7 +93,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400..600&display=swap",
       },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,25 +119,35 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function SiteHeader() {
-  const linkCls =
-    "rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
-  const activeCls = "bg-card text-foreground";
+  const linkCls = "rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
+  const anchors = [
+    { hash: "simulator", label: "Simulator" },
+    { hash: "architecture", label: "How it works" },
+    { hash: "hardware", label: "Hardware" },
+    { hash: "developers", label: "Developers" },
+  ];
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2.5">
           <InaLogo className="size-8" />
           <div className="leading-tight">
             <div className="text-[15px] font-semibold tracking-tight">iNA</div>
-            <div className="hidden text-[11px] text-muted-foreground sm:block">Universal Apple Hardware for Android</div>
+            <div className="hidden text-[11px] text-muted-foreground sm:block">Apple hardware, unlocked on Android</div>
           </div>
         </Link>
         <nav className="flex items-center gap-1">
-          <Link to="/" className={linkCls} activeProps={{ className: activeCls }} activeOptions={{ exact: true }}>
-            Prototype
-          </Link>
-          <Link to="/source" className={linkCls} activeProps={{ className: activeCls }}>
-            Android source
+          {anchors.map((a) => (
+            <Link key={a.hash} to="/" hash={a.hash} className={cn(linkCls, "hidden md:inline-flex")}>
+              {a.label}
+            </Link>
+          ))}
+          <Link
+            to="/source"
+            className="ml-1 rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            activeProps={{ className: "ring-2 ring-primary/40 ring-offset-2 ring-offset-background" }}
+          >
+            Source
           </Link>
         </nav>
       </div>
@@ -142,16 +155,21 @@ function SiteHeader() {
   );
 }
 
-function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
+function SiteFooter() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen pb-[env(safe-area-inset-bottom)]">
-        <SiteHeader />
-        <Outlet />
+    <footer className="border-t border-border">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <InaLogo className="size-10" />
+          <div>
+            <div className="text-sm font-semibold">iNA · dev.ibridge.android</div>
+            <div className="text-xs text-muted-foreground">Universal Apple Hardware Interoperability Suite for Android</div>
+          </div>
+        </div>
+        <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+          AirPods, Beats, Apple Watch, AirTag and HomePod are trademarks of Apple Inc. iNA is an independent project and is not affiliated with or endorsed by Apple.
+        </p>
       </div>
-      <Toaster theme="dark" position="bottom-center" />
-    </QueryClientProvider>
+    </footer>
   );
 }
