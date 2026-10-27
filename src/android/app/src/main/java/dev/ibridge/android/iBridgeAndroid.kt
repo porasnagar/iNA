@@ -361,6 +361,8 @@ data class AirPodsState(
     val leftInEar: Boolean = false,
     val rightInEar: Boolean = false,
     val lidOpenCounter: Int = -1,
+    /** true = lid closed, false = open, null = this advert doesn't say. */
+    val lidClosed: Boolean? = null,
     val rssi: Int = Int.MIN_VALUE,
     val listeningMode: ListeningMode = ListeningMode.OFF,
     val conversationAwareness: Boolean = false,
@@ -395,22 +397,36 @@ object ProximityPacketParser {
     /**
      * [data] is the manufacturer-specific payload for company 0x004C
      * (ScanRecord.getManufacturerSpecificData(0x004C)).
+     *
+     * Byte 5 bit 5 says which AirPod is broadcasting. When it is the left one, byte 6 carries
+     * left in the low nibble and right in the high nibble; when it is the right one they swap,
+     * and so do the charging bits. Without this, half of all AirPods show left/right swapped.
+     * Byte 8: bits 0-2 lid-open counter, bit 3 lid closed (only meaningful while the
+     * broadcasting AirPod sits in the case, byte 5 bit 6).
+     * Mirrors parseProximityPacket in src/lib/ina/protocol.ts.
      */
     fun parse(data: ByteArray?, rssi: Int): AirPodsState? {
         if (data == null || data.size < 9) return null
         if (data[0].toInt() and 0xFF != AppleProtocolSpec.TYPE_PROXIMITY_PAIRING) return null
         val b = IntArray(data.size) { data[it].toInt() and 0xFF }
+        val status = b[5]
+        val leftPrimary = status and 0x20 != 0
+        val podInCase = status and 0x40 != 0
+        val swapEar = !leftPrimary xor podInCase
+        val hi = (b[6] shr 4) and 0x0F
+        val lo = b[6] and 0x0F
         return AirPodsState(
             modelId = (b[3] shl 8) or b[4],
-            leftInEar = b[5] and 0b0000_0010 != 0,
-            rightInEar = b[5] and 0b0000_1000 != 0,
-            leftBattery = nibble((b[6] shr 4) and 0x0F),
-            rightBattery = nibble(b[6] and 0x0F),
+            leftInEar = status and (if (swapEar) 0b0000_1000 else 0b0000_0010) != 0,
+            rightInEar = status and (if (swapEar) 0b0000_0010 else 0b0000_1000) != 0,
+            leftBattery = nibble(if (leftPrimary) lo else hi),
+            rightBattery = nibble(if (leftPrimary) hi else lo),
             caseBattery = nibble(b[7] and 0x0F),
-            leftCharging = b[7] and 0b0001_0000 != 0,
-            rightCharging = b[7] and 0b0010_0000 != 0,
-            caseCharging = b[7] and 0b0100_0000 != 0,
+            leftCharging = b[7] and (if (leftPrimary) 0x10 else 0x20) != 0,
+            rightCharging = b[7] and (if (leftPrimary) 0x20 else 0x10) != 0,
+            caseCharging = b[7] and 0x40 != 0,
             lidOpenCounter = b[8] and 0x07,
+            lidClosed = if (podInCase) (b[8] and 0x08) != 0 else null,
             rssi = rssi,
         )
     }
