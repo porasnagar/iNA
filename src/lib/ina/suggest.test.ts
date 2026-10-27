@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { LOW_BATTERY_THRESHOLD, suggestNextAction, type SuggestionInput } from "./suggest";
+import {
+  dismissSuggestion,
+  EMPTY_SUGGESTION_MEMORY,
+  forgetClearedAlerts,
+  LOW_BATTERY_THRESHOLD,
+  SUGGESTION_QUIET_MS,
+  suggestNextAction,
+  type SuggestionInput,
+} from "./suggest";
 
 const base: SuggestionInput = {
   caps: { anc: true, adaptive: true, fitTest: true, conversationAwareness: true, hasCase: true },
@@ -65,5 +73,37 @@ describe("suggestNextAction", () => {
   it("uses the single battery for over-ear headphones", () => {
     const max = { ...base, caps: { ...base.caps, hasCase: false, fitTest: false }, left: 15, right: -1 };
     expect(suggestNextAction(max)?.title).toBe("Battery at 15%");
+  });
+});
+
+describe("closing a suggestion", () => {
+  const ancOff = { ...base, mode: "off" as const, leftInEar: false, rightInEar: false, playing: false };
+  const day = SUGGESTION_QUIET_MS;
+
+  it("keeps Noise Cancellation is off closed and shows no other tip for 24 hours", () => {
+    expect(suggestNextAction(ancOff)?.id).toBe("turn-on-anc");
+    const m = dismissSuggestion(EMPTY_SUGGESTION_MEMORY, "turn-on-anc", 1_000);
+    const input = { ...ancOff, dismissed: m.closed, quietUntil: m.quietUntil };
+    // "Put in your AirPods" must not pop up in its place.
+    expect(suggestNextAction({ ...input, now: 1_000 + day - 1 })).toBeNull();
+    expect(suggestNextAction({ ...input, now: 1_000 + day })?.id).toBe("start-listening");
+  });
+
+  it("never brings back a closed tip, even after the quiet period", () => {
+    let m = dismissSuggestion(EMPTY_SUGGESTION_MEMORY, "turn-on-anc", 0);
+    m = dismissSuggestion(m, "start-listening", day);
+    expect(suggestNextAction({ ...ancOff, dismissed: m.closed, quietUntil: m.quietUntil, now: 10 * day })).toBeNull();
+  });
+
+  it("still shows low battery during the quiet period", () => {
+    const m = dismissSuggestion(EMPTY_SUGGESTION_MEMORY, "turn-on-anc", 0);
+    expect(suggestNextAction({ ...base, left: 10, dismissed: m.closed, quietUntil: m.quietUntil, now: 1 })?.id).toBe("low-battery");
+  });
+
+  it("forgets a closed low-battery alert once the battery recovers", () => {
+    const m = dismissSuggestion(EMPTY_SUGGESTION_MEMORY, "low-battery", 0);
+    expect(forgetClearedAlerts(m, ["low-battery"]).closed).toEqual(["low-battery"]);
+    expect(forgetClearedAlerts(m, []).closed).toEqual([]);
+    expect(forgetClearedAlerts(dismissSuggestion(m, "turn-on-anc", 0), []).closed).toEqual(["turn-on-anc"]);
   });
 });

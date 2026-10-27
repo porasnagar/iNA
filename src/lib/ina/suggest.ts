@@ -27,7 +27,40 @@ export interface SuggestionInput {
   fitTested: boolean;
   pausedByEar: boolean;
   playing: boolean;
+  /** Suggestions the user closed (see {@link SuggestionMemory}). */
   dismissed: readonly SuggestionId[];
+  /** After a close, other tips wait until this time (ms). Alerts ignore it. */
+  quietUntil?: number;
+  now?: number;
+}
+
+/** Low battery and Music paused are alerts: they come back the next time it happens. */
+export const ALERT_SUGGESTIONS: readonly SuggestionId[] = ["low-battery", "resume"];
+/** After closing a suggestion, no other tip takes its place for this long. */
+export const SUGGESTION_QUIET_MS = 24 * 60 * 60 * 1000;
+
+/** What the user closed. Persisted so a closed card never comes back on the next visit. */
+export interface SuggestionMemory {
+  closed: SuggestionId[];
+  quietUntil: number;
+}
+
+export const EMPTY_SUGGESTION_MEMORY: SuggestionMemory = { closed: [], quietUntil: 0 };
+
+/** X on the card: that suggestion stays closed and no other tip pops up in its place for a day. */
+export function dismissSuggestion(m: SuggestionMemory, id: SuggestionId, now: number): SuggestionMemory {
+  return { closed: m.closed.includes(id) ? m.closed : [...m.closed, id], quietUntil: now + SUGGESTION_QUIET_MS };
+}
+
+/** The suggestion's button was used: hide it, without the quiet period. */
+export function completeSuggestion(m: SuggestionMemory, id: SuggestionId): SuggestionMemory {
+  return m.closed.includes(id) ? m : { ...m, closed: [...m.closed, id] };
+}
+
+/** Closed alerts whose condition has cleared are forgotten, so the next low battery shows again. */
+export function forgetClearedAlerts(m: SuggestionMemory, current: readonly SuggestionId[]): SuggestionMemory {
+  const closed = m.closed.filter((id) => !ALERT_SUGGESTIONS.includes(id) || current.includes(id));
+  return closed.length === m.closed.length ? m : { ...m, closed };
 }
 
 export interface Suggestion {
@@ -40,7 +73,8 @@ export interface Suggestion {
 /** A bud at or below this level (and not charging) counts as low. */
 export const LOW_BATTERY_THRESHOLD = 20;
 
-export function suggestNextAction(i: SuggestionInput): Suggestion | null {
+/** Every suggestion that applies right now, most important first (ignores what was closed). */
+export function suggestionCandidates(i: SuggestionInput): Suggestion[] {
   const candidates: Suggestion[] = [];
   const overEar = !i.caps.hasCase;
   const wornBoth = overEar ? i.leftInEar : i.leftInEar && i.rightInEar;
@@ -101,5 +135,14 @@ export function suggestNextAction(i: SuggestionInput): Suggestion | null {
     });
   }
 
-  return candidates.find((c) => !i.dismissed.includes(c.id)) ?? null;
+  return candidates;
+}
+
+export function suggestNextAction(i: SuggestionInput): Suggestion | null {
+  const quiet = (i.now ?? 0) < (i.quietUntil ?? 0);
+  return (
+    suggestionCandidates(i).find(
+      (c) => !i.dismissed.includes(c.id) && (!quiet || ALERT_SUGGESTIONS.includes(c.id)),
+    ) ?? null
+  );
 }
