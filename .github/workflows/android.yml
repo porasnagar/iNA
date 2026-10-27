@@ -24,7 +24,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # The default package list includes the retired "tools" package, which newer
+      # cmdline-tools (16.0+) no longer ship, so list the exact packages instead.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;35.0.0"
+          log-accepted-android-sdk-licenses: false
 
       # Pinned Gradle 8.11.1 (matches AGP 8.10.1). Never "current" — Gradle 9+ breaks AGP 8.x.
       - uses: gradle/actions/setup-gradle@v4
