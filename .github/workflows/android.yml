@@ -57,18 +57,18 @@ jobs:
           INA_KEY_PASSWORD: ${{ secrets.INA_KEY_PASSWORD }}
         run: gradle --no-daemon --stacktrace assembleDebug assembleRelease
 
+      # Short retention + continue-on-error: a full artifact storage quota must never fail a good build.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
-          name: iNA-debug-apk
-          path: src/android/app/build/outputs/apk/debug/*.apk
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: iNA-release-apk
+          name: iNA-apks
+          retention-days: 3
+          compression-level: 0
           path: |
+            src/android/app/build/outputs/apk/debug/*.apk
             src/android/app/build/outputs/apk/release/*.apk
-            src/android/app/build/outputs/mapping/release/mapping.txt
 
+      # Releases don't count against artifact storage — push a v* tag to get permanent APK downloads.
       - name: Attach APKs to the GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
