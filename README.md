@@ -67,7 +67,9 @@ Import the repository in Vercel and set **Settings → Git → Production Branch
 - **New version = new tag.** Bump `versionName` in `src/android/app/build.gradle.kts`; the
   next build tags the `android` branch `v<versionName>` (e.g. `v1.1.0`) and publishes a
   [GitHub Release](https://github.com/porasnagar/iNA/releases) with both APKs.
-- You can also push a `v*` tag on the `android` branch yourself to release that commit.
+- You can also push a `v*` tag on the `android` branch yourself to release that commit. This needs
+  the android branch's own workflow, which is only copied over when the repository has an
+  `INA_SYNC_TOKEN` secret (a GitHub token with the `workflow` scope); GitHub blocks the built-in token from writing workflow files.
 - Release signing secrets are described in `src/android/README.md`.
 
 ## Contributing
