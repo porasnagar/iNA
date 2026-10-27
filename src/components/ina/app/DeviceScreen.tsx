@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { hexId, MODE_LABEL } from "@/lib/ina/protocol";
 import { useSim } from "@/lib/ina/store";
 import { cn } from "@/lib/utils";
+import { SuggestedAction } from "./SuggestedAction";
 import { Chip, Group, ToggleRow } from "./ui";
 
 export function DeviceScreen() {
@@ -28,6 +29,8 @@ export function DeviceScreen() {
         </div>
         <h1 className="mt-1 truncate text-[28px] font-bold tracking-tight">{model.name}</h1>
       </div>
+
+      <SuggestedAction />
 
       <div className="relative mx-4 h-48">
         <div className="absolute inset-0 bg-stage" />
