@@ -1758,7 +1758,9 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 }
             }
         }
-        val modes = model?.caps?.supportedModes.orEmpty()
+        // Without the control channel, mode buttons would do nothing, so they are hidden.
+        val canControl = state.isPreview || state.linkTier.hasControls
+        val modes = if (canControl) model?.caps?.supportedModes.orEmpty() else emptyList()
         if (modes.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
             Card {
@@ -1772,7 +1774,7 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 }
             }
         }
-        if (model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
+        if (canControl && model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
             SectionTitle("Hearing")
             Card {
                 if (model.caps.conversationAwareness) ToggleRow("Conversation Awareness", if (BuildConfig.DEBUG) "Lowers media when you speak · 0x28" else "Lowers media when you speak", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
