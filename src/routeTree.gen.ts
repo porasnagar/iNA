@@ -10,11 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
+import { Route as HardwareRouteImport } from './routes/hardware'
+import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as SourceRouteImport } from './routes/source'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HardwareRoute = HardwareRouteImport.update({
+  id: '/hardware',
+  path: '/hardware',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SourceRoute = SourceRouteImport.update({
@@ -25,27 +43,40 @@ const SourceRoute = SourceRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
+  '/hardware': typeof HardwareRoute
+  '/simulator': typeof SimulatorRoute
   '/source': typeof SourceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
+  '/hardware': typeof HardwareRoute
+  '/simulator': typeof SimulatorRoute
   '/source': typeof SourceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/architecture': typeof ArchitectureRoute
+  '/hardware': typeof HardwareRoute
+  '/simulator': typeof SimulatorRoute
   '/source': typeof SourceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/source'
+  fullPaths: '/' | '/architecture' | '/hardware' | '/simulator' | '/source'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/source'
-  id: '__root__' | '/' | '/source'
+  to: '/' | '/architecture' | '/hardware' | '/simulator' | '/source'
+  id:
+    '__root__' | '/' | '/architecture' | '/hardware' | '/simulator' | '/source'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArchitectureRoute: typeof ArchitectureRoute
+  HardwareRoute: typeof HardwareRoute
+  SimulatorRoute: typeof SimulatorRoute
   SourceRoute: typeof SourceRoute
 }
 
@@ -56,6 +87,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hardware': {
+      id: '/hardware'
+      path: '/hardware'
+      fullPath: '/hardware'
+      preLoaderRoute: typeof HardwareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/source': {
@@ -70,6 +122,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArchitectureRoute: ArchitectureRoute,
+  HardwareRoute: HardwareRoute,
+  SimulatorRoute: SimulatorRoute,
   SourceRoute: SourceRoute,
 }
 export const routeTree = rootRouteImport

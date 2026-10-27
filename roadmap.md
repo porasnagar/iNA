@@ -13,3 +13,4 @@
 - [x] Green brand accents on website; phone simulator + Kotlin app stay original Apple dark
 - [ ] Multi-page site: /, /simulator, /architecture, /hardware, /source with own SEO + sitemap.xml/robots.txt
 - [ ] Each page: unique keyword-rich h1, structured h2/h3, landmarks; minimal meta only
+- [ ] Phone fits laptop height (viewport-bounded); controls beside it; mobile Phone/Controls tabs
