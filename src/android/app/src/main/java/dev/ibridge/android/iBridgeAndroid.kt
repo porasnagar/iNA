@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.media.AudioManager
+import android.os.Build
 import android.os.SystemClock
 import android.telecom.TelecomManager
 import android.util.Base64
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -81,6 +83,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,6 +94,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -345,6 +350,8 @@ data class AirPodsState(
     val linkTier: LinkTier = LinkTier.NONE,
     val deviceAddress: String? = null,
     val fitTestResult: Pair<Boolean, Boolean>? = null,
+    /** Media was paused by in-ear detection (feeds the "Resume" suggestion). */
+    val pausedByEar: Boolean = false,
 ) {
     val model: AppleModel? get() = AppleProtocolSpec.model(modelId)
     val isPaired: Boolean get() = deviceAddress != null
@@ -441,6 +448,10 @@ data class InaSettings(
     val stemRight: StemAction = StemAction.NOISE_CONTROL,
     val crownReversed: Boolean = false,
     val loudSoundReduction: Boolean = true,
+    /** Display › Reduce Transparency: solid surfaces instead of Liquid Glass. */
+    val reduceTransparency: Boolean = false,
+    /** Forward Android notifications to Apple Watch over ANCS. */
+    val watchNotifications: Boolean = true,
 )
 
 class InaSettingsStore(context: Context) {
@@ -454,6 +465,8 @@ class InaSettingsStore(context: Context) {
         stemRight = StemAction.valueOf(prefs.getString("stem_right", StemAction.NOISE_CONTROL.name)!!),
         crownReversed = prefs.getBoolean("crown_reversed", false),
         loudSoundReduction = prefs.getBoolean("loud_sound_reduction", true),
+        reduceTransparency = prefs.getBoolean("reduce_transparency", false),
+        watchNotifications = prefs.getBoolean("watch_notifications", true),
     )
 
     fun update(transform: (InaSettings) -> InaSettings) {
@@ -464,6 +477,8 @@ class InaSettingsStore(context: Context) {
             .putString("stem_right", next.stemRight.name)
             .putBoolean("crown_reversed", next.crownReversed)
             .putBoolean("loud_sound_reduction", next.loudSoundReduction)
+            .putBoolean("reduce_transparency", next.reduceTransparency)
+            .putBoolean("watch_notifications", next.watchNotifications)
             .apply()
         _settings.value = next
     }
@@ -812,20 +827,30 @@ class AirPodsProController(
 }
 
 /** In-ear optical detection → Android media pause / resume. */
-class MediaAutoPauseController(context: Context) {
+class MediaAutoPauseController(private val context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
-    private var pausedByUs = false
 
     fun onEarStateChanged(wasLeft: Boolean, wasRight: Boolean, left: Boolean, right: Boolean) {
         val removed = (wasLeft && !left) || (wasRight && !right)
         val bothIn = left && right
+        val pausedByUs = IBridgeStateStore.state.value.pausedByEar
         when {
-            removed && audio.isMusicActive -> { dispatch(KeyEvent.KEYCODE_MEDIA_PAUSE); pausedByUs = true }
-            bothIn && pausedByUs -> { dispatch(KeyEvent.KEYCODE_MEDIA_PLAY); pausedByUs = false }
+            removed && audio.isMusicActive -> {
+                MediaKeys.send(context, KeyEvent.KEYCODE_MEDIA_PAUSE)
+                IBridgeStateStore.update { it.copy(pausedByEar = true) }
+            }
+            bothIn && pausedByUs -> {
+                MediaKeys.send(context, KeyEvent.KEYCODE_MEDIA_PLAY)
+                IBridgeStateStore.update { it.copy(pausedByEar = false) }
+            }
         }
     }
+}
 
-    private fun dispatch(code: Int) {
+/** Sends a media button press to the active media session. */
+object MediaKeys {
+    fun send(context: Context, code: Int) {
+        val audio = context.getSystemService(AudioManager::class.java) ?: return
         val now = SystemClock.uptimeMillis()
         audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0))
         audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0))
@@ -866,6 +891,10 @@ object InaGraph {
     @Volatile private var rules: OtaProtocolRuleManager? = null
     @Volatile private var settings: InaSettingsStore? = null
     @Volatile private var controller: AirPodsProController? = null
+    @Volatile private var otherDevices: OtherDeviceHub? = null
+
+    fun otherDevices(context: Context): OtherDeviceHub =
+        otherDevices ?: synchronized(this) { otherDevices ?: OtherDeviceHub(context.applicationContext).also { otherDevices = it } }
 
     fun rules(context: Context): OtaProtocolRuleManager =
         rules ?: synchronized(this) { rules ?: OtaProtocolRuleManager(context.applicationContext).also { rules = it } }
@@ -925,6 +954,13 @@ object InaColors {
 
 @Composable
 fun InaTheme(content: @Composable () -> Unit) {
+    val settings by InaGraph.settings(LocalContext.current).settings.collectAsState()
+    val glass = LocalGlass.current.copy(reduceTransparency = settings.reduceTransparency)
+    CompositionLocalProvider(LocalGlass provides glass) { InaMaterialTheme(content) }
+}
+
+@Composable
+private fun InaMaterialTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = InaColors.Primary,
@@ -955,6 +991,7 @@ interface InaActions {
     fun playChirp(target: ChirpTarget?)
     fun setPreview(on: Boolean)
     fun disconnect()
+    fun resumeMedia()
     fun syncRules()
     fun applyRulesJson(json: String): String?
     fun overridePsm(hex: String): String?
@@ -1013,13 +1050,21 @@ fun InaApp(
             return@Box
         }
         var tab by rememberSaveable { mutableStateOf(InaTab.DEVICE) }
-        Column(Modifier.fillMaxSize()) {
+        var other by rememberSaveable { mutableStateOf<OtherDeviceKind?>(null) }
+        // Liquid Glass: blur the app behind the in-app case pop-up (Android 12+, unless Reduce Transparency).
+        val blurBackdrop = inlinePopup != null && !settings.reduceTransparency && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        Column(Modifier.fillMaxSize().then(if (blurBackdrop) Modifier.blur(24.dp) else Modifier)) {
             Box(Modifier.weight(1f)) {
+                val openOther = other
                 when (tab) {
-                    InaTab.DEVICE -> if (state.connected) DeviceScreen(state, actions) else ConnectDeviceScreen(state, actions)
+                    InaTab.DEVICE -> when {
+                        openOther != null -> OtherDeviceScreen(openOther, onClose = { other = null })
+                        state.connected -> DeviceScreen(state, actions, onOpenControls = { tab = InaTab.CONTROLS })
+                        else -> ConnectDeviceScreen(state, actions, onOpenOther = { other = it })
+                    }
                     InaTab.CONTROLS -> ControlsScreen(state, settings, actions)
                     InaTab.RULES -> RulesScreen(rules, rulesSyncing, actions)
-                    InaTab.SETTINGS -> SettingsScreen(state, onboarding, actions, permissions)
+                    InaTab.SETTINGS -> SettingsScreen(state, settings, onboarding, actions, permissions)
                 }
             }
             NavigationBar(containerColor = InaColors.Background, tonalElevation = 0.dp) {
@@ -1046,16 +1091,19 @@ fun InaApp(
                 onDismissRequest = onDismissPopup,
                 sheetState = sheetState,
                 containerColor = Color.Transparent,
+                scrimColor = Color.Black.copy(alpha = if (settings.reduceTransparency) 0.62f else 0.3f),
                 dragHandle = null,
             ) {
-                AppleCaseOpenPopupSheet(
-                    state = inlinePopup,
-                    stage = if (inlinePopup.isPaired || state.connected) PopupStage.INFO_PAIRED else PopupStage.INFO_UNPAIRED,
-                    pairingStep = 0,
-                    onConnect = onPopupConnect,
-                    onDismiss = onDismissPopup,
-                    modifier = Modifier.padding(8.dp),
-                )
+                CompositionLocalProvider(LocalGlass provides LocalGlass.current.copy(backdropBlurred = blurBackdrop)) {
+                    AppleCaseOpenPopupSheet(
+                        state = inlinePopup,
+                        stage = if (inlinePopup.isPaired || state.connected) PopupStage.INFO_PAIRED else PopupStage.INFO_UNPAIRED,
+                        pairingStep = 0,
+                        onConnect = onPopupConnect,
+                        onDismiss = onDismissPopup,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
             }
         }
     }
@@ -1112,7 +1160,7 @@ private fun LargeTitle(title: String, subtitle: String? = null) {
 }
 
 @Composable
-private fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier
             .padding(horizontal = 16.dp)
@@ -1124,7 +1172,7 @@ private fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text.uppercase(),
         color = InaColors.TextSecondary,
@@ -1136,7 +1184,7 @@ private fun SectionTitle(text: String) {
 
 /** Title uses weight(1f).padding(end = 12.dp); value uses maxLines = 1, softWrap = false. */
 @Composable
-private fun SettingRow(
+internal fun SettingRow(
     title: String,
     detail: String? = null,
     value: String? = null,
@@ -1168,7 +1216,7 @@ private fun SettingRow(
 }
 
 @Composable
-private fun ToggleRow(title: String, detail: String?, checked: Boolean, icon: ImageVector, tint: Color, onChange: (Boolean) -> Unit) {
+internal fun ToggleRow(title: String, detail: String?, checked: Boolean, icon: ImageVector, tint: Color, onChange: (Boolean) -> Unit) {
     SettingRow(title = title, detail = detail, icon = icon, tint = tint, onClick = { onChange(!checked) }) {
         Switch(
             checked = checked,
@@ -1340,7 +1388,7 @@ private val LEARN_MORE = listOf(
 )
 
 @Composable
-fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions) {
+fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions, onOpenOther: (OtherDeviceKind) -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         LargeTitle("Connect a Device", "Bring your Apple accessory close to this phone.")
         Card {
@@ -1368,6 +1416,7 @@ fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions) {
         }
         Spacer(Modifier.height(16.dp))
         PreviewToggleCard(state, actions)
+        OtherDevicesList(onOpenOther)
         Spacer(Modifier.height(24.dp))
         Text("Learn More", color = InaColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(8.dp))
@@ -1416,7 +1465,7 @@ private fun LearnMoreFamily(f: FamilyInfo) {
 /* ---------- Connected device dashboard ---------- */
 
 @Composable
-fun DeviceScreen(state: AirPodsState, actions: InaActions) {
+fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () -> Unit) {
     val model = state.model
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1426,6 +1475,7 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions) {
             Text(AppleProtocolSpec.hex(state.modelId), color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false)
         }
         Text(model?.name ?: "Apple accessory", color = InaColors.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp))
+        SuggestedActionCard(state, actions, onOpenControls)
         Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
             ProductArtImage(model?.art ?: ProductArtKey.AIRPODS_PRO, model?.name, Modifier.size(180.dp))
         }
@@ -1647,10 +1697,25 @@ fun RulesScreen(rules: OtaRules, syncing: Boolean, actions: InaActions) {
 /* ---------- Settings ---------- */
 
 @Composable
-fun SettingsScreen(state: AirPodsState, status: OnboardingStatus, actions: InaActions, permissions: PermissionActions) {
+fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: OnboardingStatus, actions: InaActions, permissions: PermissionActions) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         LargeTitle("Settings")
         PreviewToggleCard(state, actions)
+        SectionTitle("Display")
+        Card {
+            ToggleRow(
+                "Reduce Transparency",
+                if (settings.reduceTransparency) "Solid surfaces" else "Liquid Glass",
+                settings.reduceTransparency,
+                Icons.Rounded.Contrast,
+                InaColors.Elevated,
+            ) { on -> actions.updateSettings { it.copy(reduceTransparency = on) } }
+        }
+        Text(
+            "Makes the case pop-up and other sheets solid for higher contrast.",
+            color = InaColors.TextSecondary, fontSize = 12.sp,
+            modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 6.dp),
+        )
         SectionTitle("Permissions")
         Card {
             PERMISSION_PAGES.forEach { p ->
@@ -1688,8 +1753,7 @@ fun AppleCaseOpenPopupSheet(
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(42.dp))
-            .background(InaColors.Card.copy(alpha = 0.97f))
+            .glassSurface(RoundedCornerShape(42.dp))
             .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
