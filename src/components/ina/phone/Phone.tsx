@@ -14,7 +14,7 @@ export function Phone() {
   const { state } = useSim();
   useChirp();
   return (
-    <div className="relative mx-auto aspect-[390/844] w-[min(390px,calc(100vw-32px))] shrink-0 rounded-[58px] bg-bezel p-[11px] shadow-phone">
+    <div className="theme-apple relative mx-auto aspect-[390/844] w-[min(390px,calc(100vw-32px))] shrink-0 rounded-[58px] bg-bezel p-[11px] shadow-phone">
       <span aria-hidden className="absolute -right-[3px] top-[22%] h-16 w-[3px] rounded-r bg-elevated" />
       <span aria-hidden className="absolute -right-[3px] top-[33%] h-24 w-[3px] rounded-r bg-elevated" />
       <div

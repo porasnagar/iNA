@@ -179,7 +179,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen pb-[env(safe-area-inset-bottom)]">
+      <div className="theme-brand min-h-screen pb-[env(safe-area-inset-bottom)]">
         <SiteHeader />
         <Outlet />
         <SiteFooter />
