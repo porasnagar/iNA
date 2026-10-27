@@ -2038,6 +2038,16 @@ fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: Onboardin
             }
             SettingRow("Run setup again", icon = Icons.Rounded.Refresh, tint = InaColors.Elevated, onClick = permissions::restartOnboarding)
         }
+        SectionTitle("Background")
+        Card {
+            SettingRow("Case pop-up listener", devOnly("IBridgeForegroundService · connectedDevice · BOOT_COMPLETED"), if (status.bluetooth) "On" else "Off", Icons.Rounded.Bolt, InaColors.Success)
+        }
+        Text(
+            if (status.overlay) "Starts with your phone, so the case pop-up shows on the Home Screen without opening iNA."
+            else "Allow \"Display over other apps\" above so the case pop-up can show on the Home Screen. Until then it arrives as a notification.",
+            color = InaColors.TextSecondary, fontSize = 12.sp,
+            modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 6.dp),
+        )
         SectionTitle("About")
         Card { SettingRow("iNA", if (BuildConfig.DEBUG) "Debug build · dev.ibridge.android" else null, BuildConfig.VERSION_NAME) }
     }
