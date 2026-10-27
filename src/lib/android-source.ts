@@ -3,7 +3,8 @@ import { strToU8, zipSync } from "fflate";
 import { PRODUCT_IMAGES, PRODUCT_RES_NAMES } from "@/components/ina/product";
 import type { ProductImageKey } from "@/lib/ina/protocol";
 
-const RAW = import.meta.glob(["/src/android/**/*", "!/src/android/**/*.png"], {
+// The .github entry is spelled out because globs skip dot-folders; it becomes the android branch's own APK workflow.
+const RAW = import.meta.glob(["/src/android/**/*", "/src/android/.github/workflows/*.yml", "!/src/android/**/*.png"], {
   query: "?raw",
   import: "default",
   eager: true,
