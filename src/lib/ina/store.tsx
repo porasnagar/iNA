@@ -502,6 +502,12 @@ function useSimStore() {
       clearLog() {
         set((s) => ({ ...s, log: [] }));
       },
+      setReduceTransparency(on: boolean) {
+        set((s) => withLog({ ...s, reduceTransparency: on }, entry("UI", `Reduce Transparency ${on ? "on · solid surfaces" : "off · Liquid Glass"}`)));
+      },
+      markFitTested() {
+        set((s) => ({ ...s, fitTested: true }));
+      },
     };
   }, []);
 
