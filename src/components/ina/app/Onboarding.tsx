@@ -144,11 +144,11 @@ export function Onboarding() {
     return (
       <div className="flex h-full flex-col px-6 pb-6 pt-14">
         <InaLogo className="size-16" />
-        <h1 className="mt-6 text-[34px] font-bold leading-[1.05] tracking-tight">
+        <h3 className="mt-6 text-[34px] font-bold leading-[1.05] tracking-tight">
           Your Apple gear,
           <br />
           at home on Android.
-        </h1>
+        </h3>
         <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
           Case-open pop-ups, noise control, ear detection and more — for AirPods, Beats, Apple Watch and AirTag. No root, no workarounds.
         </p>
@@ -170,7 +170,7 @@ export function Onboarding() {
         <div className="grid size-16 place-items-center rounded-full bg-success text-background">
           <Check className="size-8" strokeWidth={3} />
         </div>
-        <h1 className="mt-6 text-[32px] font-bold leading-tight tracking-tight">You're all set</h1>
+        <h3 className="mt-6 text-[32px] font-bold leading-tight tracking-tight">You're all set</h3>
         <p className="mt-2 text-[15px] text-muted-foreground">Open your AirPods case near the phone — the pop-up will appear even when iNA is closed.</p>
         <ul className="mt-6 space-y-2">
           {STEPS.map((s) => (
@@ -208,7 +208,7 @@ export function Onboarding() {
       <div className={cn("mt-10 grid size-16 place-items-center rounded-[20px] text-primary-foreground", step.tint)}>
         <step.icon className="size-8" />
       </div>
-      <h1 className="mt-5 text-[28px] font-bold leading-tight tracking-tight">{step.title}</h1>
+      <h3 className="mt-5 text-[28px] font-bold leading-tight tracking-tight">{step.title}</h3>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{step.body}</p>
       <div className="mt-5 flex flex-wrap gap-1.5">
         {step.tech.map((t) => (

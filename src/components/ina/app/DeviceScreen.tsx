@@ -27,7 +27,7 @@ export function DeviceScreen() {
           <span className="text-[13px] font-medium text-muted-foreground">{preview ? "Preview · simulated values" : "Connected"}</span>
           <Chip className="ml-auto">{hexId(model.id)} · {model.chip}</Chip>
         </div>
-        <h1 className="mt-1 truncate text-[28px] font-bold tracking-tight">{model.name}</h1>
+        <h3 className="mt-1 truncate text-[28px] font-bold tracking-tight">{model.name}</h3>
       </div>
 
       <SuggestedAction />

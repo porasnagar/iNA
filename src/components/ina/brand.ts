@@ -9,3 +9,12 @@ export const BRAND = {
   banner: bannerAsset.url,
   tagline: "Universal Apple Hardware Interoperability Suite for Android",
 } as const;
+
+/**
+ * Open-source repository. TODO(owner): replace with the real GitHub repo URL
+ * (e.g. https://github.com/<you>/<repo>) — every GitHub link on the site reads from here.
+ */
+export const REPO = {
+  url: "https://github.com/",
+  license: "MIT",
+} as const;

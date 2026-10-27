@@ -42,7 +42,7 @@ export function OtherDeviceScreen({ kind, onClose }: { kind: OtherDeviceKind; on
           <span className="text-[13px] font-medium text-muted-foreground">Connected · simulated</span>
           <Chip className="ml-auto">{m.chip}</Chip>
         </div>
-        <h1 className="mt-1 truncate text-[28px] font-bold tracking-tight">{m.name}</h1>
+        <h3 className="mt-1 truncate text-[28px] font-bold tracking-tight">{m.name}</h3>
       </div>
       <div className="relative mx-4 h-48">
         <div className="absolute inset-0 bg-stage" />

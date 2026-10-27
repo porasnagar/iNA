@@ -57,7 +57,7 @@ export function ProximitySheet() {
         >
           <X className="size-4" />
         </button>
-        <h2 className="mx-8 truncate text-xl font-semibold tracking-tight">{name}</h2>
+        <h4 className="mx-8 truncate text-xl font-semibold tracking-tight">{name}</h4>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {sheet.stage === "done"
             ? "Connected to this phone"

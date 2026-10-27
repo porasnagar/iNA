@@ -121,7 +121,7 @@ export function RulesScreen() {
 
       <section className="px-4">
         <div className="mb-1.5 flex items-center justify-between px-3">
-          <h2 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">Rule JSON</h2>
+          <h4 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">Rule JSON</h4>
           <div className="flex gap-3 text-xs font-medium text-primary">
             {editing ? (
               <>

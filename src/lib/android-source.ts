@@ -45,6 +45,7 @@ const DESCRIPTIONS: Record<string, string> = {
   "AppleDevices.kt": "Apple Watch (GATT heart rate), AirTag (Find My scanner) and HomePod (Bonjour) screens",
   "LiquidGlass.kt": "Liquid Glass surfaces, window blur and Reduce Transparency",
   "NextActionAdvisor.kt": "Suggested next action card on the AirPods screen",
+  "HighRefreshRate.kt": "Requests 90/120/144 Hz for the app and the case-open overlay",
 };
 
 function languageOf(name: string): SourceLanguage {

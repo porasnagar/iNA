@@ -50,6 +50,7 @@
   --color-bezel: var(--bezel);
   --color-scrim: var(--scrim);
   --color-paper: var(--paper);
+  --color-float-shadow: var(--float-shadow);
   --color-tint-blue: var(--tint-blue);
   --color-tint-green: var(--tint-green);
   --color-tint-orange: var(--tint-orange);
@@ -109,10 +110,13 @@
   --tint-teal: oklch(0.32 0.004 270);
   --tint-yellow: oklch(0.32 0.004 270);
 
-  /* Paper plate behind the official iNA artwork (the art's own cream background). Brand green lives only in the art. */
+  /* Website brand: the iNA chameleon green (applied via .theme-brand) and the cream paper plate behind the official art */
+  --brand: oklch(0.8 0.15 160);
+  --brand-foreground: oklch(0.2 0.02 165);
   --paper: oklch(0.966 0.006 125);
-  --gradient-brand-glow: radial-gradient(55% 60% at 50% 45%, oklch(0.3 0.04 260 / 0.55), transparent 70%);
-  --shadow-plate: 0 50px 100px -30px oklch(0 0 0 / 0.75), 0 0 0 1px oklch(1 0 0 / 0.06);
+  --float-shadow: oklch(0.8 0.15 160 / 0.28);
+  --gradient-brand-glow: radial-gradient(55% 60% at 50% 45%, oklch(0.8 0.15 160 / 0.22), transparent 70%);
+  --shadow-plate: 0 50px 100px -30px oklch(0.8 0.15 160 / 0.25), 0 30px 60px -30px oklch(0 0 0 / 0.8);
 
   --wallpaper: radial-gradient(120% 70% at 30% 0%, oklch(0.32 0.01 260) 0%, transparent 65%), oklch(0.12 0.003 270);
   --gradient-logo: linear-gradient(160deg, oklch(1 0 0 / 0.22), oklch(1 0 0 / 0.06));
@@ -144,6 +148,22 @@
   --sidebar-accent-foreground: oklch(0.975 0 0);
   --sidebar-border: oklch(1 0 0 / 9%);
   --sidebar-ring: oklch(0.63 0.2 255);
+}
+
+/* Website chrome: the accent becomes the chameleon green. */
+.theme-brand {
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --ring: var(--brand);
+  --chart-1: var(--brand);
+}
+
+/* Simulated phone: always the original Apple dark system palette, whatever surrounds it. */
+.theme-apple {
+  --primary: oklch(0.63 0.2 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.63 0.2 255);
+  --chart-1: oklch(0.63 0.2 255);
 }
 
 /* Display › Reduce Transparency: every glass surface becomes an opaque, high-contrast card. */
@@ -258,4 +278,40 @@
 }
 @utility animate-wave {
   animation: ina-wave 0.9s ease-in-out infinite;
+}
+
+/* Floating brand art — transform-only keyframes stay on the compositor at any refresh rate. */
+@keyframes ina-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-0.7deg);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) rotate(0.7deg);
+  }
+}
+@keyframes ina-breathe {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale3d(1, 1, 1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale3d(0.86, 0.8, 1);
+  }
+}
+@utility animate-float {
+  animation: ina-float 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+@utility animate-breathe {
+  animation: ina-breathe 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-breathe {
+    animation: none;
+  }
 }

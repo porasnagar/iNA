@@ -23,3 +23,9 @@
 
 - Binary Android resources (launcher PNGs in `src/android/**/res/mipmap-*`) are real files so GitHub CI can build them; `android-source.ts` excludes `*.png` from the raw glob and adds them to the zip via a `?url` glob.
 - Official brand art is served from Lovable Assets pointers in `src/assets/ina-*.asset.json` via `src/components/ina/brand.ts`; favicon/manifest icons are real files in `public/`.
+- Accent scoping: `.theme-brand` (root layout wrapper) sets the website accent to the brand tokens; `.theme-apple` on the phone frame resets it to the original Apple palette, so anything rendered inside the phone never inherits the website accent.
+- Website motion lives in `src/components/ina/site/motion.tsx` (Reveal / Stagger / StaggerItem / FloatingArt, framer-motion springs, transform/opacity only); `<MotionConfig reducedMotion="user">` and the route `PageTransition` sit in `__root.tsx`. Never animate inside the simulated phone with these.
+- The simulated phone is laid out at 390×844 and scaled by `phoneScale()` to fit the viewport (tested in `phoneScale.test.ts`); `allowBare` swaps to an edge-to-edge screen under 768px, used by `/simulator` with its Phone / Controls tabs.
+- Website pages are separate routes (`/`, `/simulator`, `/architecture`, `/hardware`, `/source`) with exactly one h1 each; the home page is a long scroll that previews each page and links to it. Keep `public/sitemap.xml` in sync when adding routes.
+- Android windows request the panel's fastest refresh rate via `HighRefreshRate.apply(...)` (activities and the WindowManager overlay); apply it to any new window.
+- Vercel deploys use `vercel.json` (`NITRO_PRESET=vercel`); the Lovable build ignores that preset and still targets its own host. GitHub links read from `REPO` in `src/components/ina/brand.ts`.

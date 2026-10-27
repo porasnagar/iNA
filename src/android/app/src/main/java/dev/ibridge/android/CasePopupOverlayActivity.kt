@@ -77,6 +77,7 @@ class CasePopupOverlayActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        HighRefreshRate.apply(window)
         val autoPair = intent.getBooleanExtra(EXTRA_START_PAIRING, false)
         // Liquid Glass: blur the Home Screen / app behind the sheet on Android 12+.
         val reduceTransparency = InaGraph.settings(this).settings.value.reduceTransparency
@@ -262,6 +263,7 @@ class CaseOverlayWindow(private val context: Context) {
         ).apply {
             gravity = Gravity.BOTTOM
             windowAnimations = android.R.style.Animation_InputMethod
+            HighRefreshRate.apply(context, this)
         }
         runCatching { windowManager.addView(compose, params) }
             .onSuccess {

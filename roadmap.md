@@ -10,3 +10,13 @@
 - [x] Official iNA brand assets: favicon, header, phone launcher, Android launcher icon
 - [x] Product-site home: hero, live simulator, architecture, hardware matrix, developer center
 - [x] Restore original Apple dark palette (blue accent) on site + phone; chameleon green only in brand art
+- [x] Green brand accents on website; phone simulator + Kotlin app stay original Apple dark
+- [x] Multi-page site: /, /simulator, /architecture, /hardware, /source with own SEO + sitemap.xml/robots.txt
+- [x] Each page: unique keyword-rich h1, structured h2/h3, landmarks; minimal meta only
+- [x] Phone fits laptop height (viewport-bounded); controls beside it; mobile Phone/Controls tabs
+- [x] Remove "Official iNA · Android 10–16+" hero pill
+- [x] Floating animation on hero lockup + chameleon banner
+- [x] framer-motion: page transitions, staggered cards, spring hover/press
+- [x] 120Hz: GPU-friendly web animations; Android high refresh rate for activities + overlay
+- [x] Open source: LICENSE, CONTRIBUTING.md, README monorepo, vercel.json, Open Source badge + GitHub link (header, hero, footer)
+- [x] Home keeps the long premium scroll (sections reveal on scroll) like the liked Live preview, with links into the dedicated pages

@@ -7,14 +7,18 @@ import {
   HeadContent,
   Scripts,
   type ErrorComponentProps,
+  useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { MotionConfig, motion } from "framer-motion";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { REPO } from "@/components/ina/brand";
 import { InaLogo } from "@/components/ina/InaLogo";
+import { SOFT_SPRING } from "@/components/ina/site/motion";
+import { OpenSourceBadge } from "@/components/ina/site/OpenSourceBadge";
 import { Toaster } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -118,38 +122,39 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+const NAV = [
+  { to: "/simulator", label: "Simulator" },
+  { to: "/architecture", label: "Architecture" },
+  { to: "/hardware", label: "Hardware" },
+  { to: "/source", label: "Developers" },
+] as const;
+
 function SiteHeader() {
-  const linkCls = "rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
-  const anchors = [
-    { hash: "simulator", label: "Simulator" },
-    { hash: "architecture", label: "How it works" },
-    { hash: "hardware", label: "Hardware" },
-    { hash: "developers", label: "Developers" },
-  ];
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5">
-          <InaLogo className="size-8" />
-          <div className="leading-tight">
+      <div className="mx-auto grid h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+        <Link to="/" className="flex min-w-0 items-center gap-2.5" aria-label="iNA home">
+          <InaLogo className="size-8 shrink-0" />
+          <div className="hidden min-w-0 leading-tight sm:block">
             <div className="text-[15px] font-semibold tracking-tight">iNA</div>
-            <div className="hidden text-[11px] text-muted-foreground sm:block">Apple hardware, unlocked on Android</div>
+            <div className="hidden truncate text-[11px] text-muted-foreground sm:block">Apple hardware, unlocked on Android</div>
           </div>
         </Link>
-        <nav className="flex items-center gap-1">
-          {anchors.map((a) => (
-            <Link key={a.hash} to="/" hash={a.hash} className={cn(linkCls, "hidden md:inline-flex")}>
-              {a.label}
+        <div className="flex min-w-0 items-center justify-end gap-2">
+        <nav aria-label="Main" className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]">
+          {NAV.map((n) => (
+            <Link
+              key={n.to}
+              to={n.to}
+              className="shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3.5 sm:text-sm"
+              activeProps={{ className: "bg-primary/12 !text-primary", "aria-current": "page" }}
+            >
+              {n.label}
             </Link>
           ))}
-          <Link
-            to="/source"
-            className="ml-1 rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-            activeProps={{ className: "ring-2 ring-primary/40 ring-offset-2 ring-offset-background" }}
-          >
-            Source
-          </Link>
         </nav>
+        <OpenSourceBadge compact className="hidden lg:inline-flex" />
+        </div>
       </div>
     </header>
   );
@@ -158,19 +163,61 @@ function SiteHeader() {
 function SiteFooter() {
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <InaLogo className="size-10" />
-          <div>
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex items-start gap-3">
+          <InaLogo className="size-10 shrink-0" />
+          <div className="min-w-0">
             <div className="text-sm font-semibold">iNA · dev.ibridge.android</div>
             <div className="text-xs text-muted-foreground">Universal Apple Hardware Interoperability Suite for Android</div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <OpenSourceBadge />
+              <a href={`${REPO.url}`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground">
+                Released under the {REPO.license} License
+              </a>
+            </div>
+            <p className="mt-4 max-w-md text-xs leading-relaxed text-muted-foreground">
+              AirPods, Beats, Apple Watch, AirTag and HomePod are trademarks of Apple Inc. iNA is an independent project and is not affiliated with or
+              endorsed by Apple.
+            </p>
           </div>
         </div>
-        <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-          AirPods, Beats, Apple Watch, AirTag and HomePod are trademarks of Apple Inc. iNA is an independent project and is not affiliated with or endorsed by Apple.
-        </p>
+        <nav aria-label="Footer">
+          <ul className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <li>
+              <Link to="/" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "!text-primary" }} activeOptions={{ exact: true }}>
+                Home
+              </Link>
+            </li>
+            {NAV.map((n) => (
+              <li key={n.to}>
+                <Link to={n.to} className="text-muted-foreground hover:text-foreground" activeProps={{ className: "!text-primary" }}>
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </footer>
+  );
+}
+
+/** Springs each new page in on client-side navigation (skipped on the first, server-rendered paint). */
+function PageTransition({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
+  const first = useRef(true);
+  useEffect(() => {
+    first.current = false;
+  }, []);
+  return (
+    <motion.div
+      key={pathname}
+      initial={first.current ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={SOFT_SPRING}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -179,11 +226,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen pb-[env(safe-area-inset-bottom)]">
+      <MotionConfig reducedMotion="user">
+      <div className="theme-brand min-h-screen pb-[env(safe-area-inset-bottom)]">
         <SiteHeader />
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
         <SiteFooter />
       </div>
+      </MotionConfig>
       <Toaster theme="dark" position="bottom-center" />
     </QueryClientProvider>
   );
