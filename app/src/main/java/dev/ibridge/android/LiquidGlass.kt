@@ -67,12 +67,19 @@ fun Modifier.liquidGlass(
             .border(1.dp, InaColors.Hairline, shape)
     } else {
         val alpha = if (backdropBlurred) LiquidGlass.FILL_ALPHA_BLURRED else LiquidGlass.FILL_ALPHA_UNBLURRED
+        val light = InaColors.palette.isLight
+        // Light glass: a brighter top sheen and a soft dark rim so the edge reads on white.
+        val rim = if (light) {
+            listOf(Color.White.copy(alpha = 0.9f), Color.Black.copy(alpha = 0.06f), Color.Black.copy(alpha = 0.1f))
+        } else {
+            listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.12f))
+        }
         this.clip(shape)
             .background(base.copy(alpha = alpha), shape)
             // Specular sheen: bright at the top edge, fading through the body.
             .background(
                 Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = 0.12f),
+                    0f to Color.White.copy(alpha = if (light) 0.5f else 0.12f),
                     0.38f to Color.White.copy(alpha = 0.03f),
                     0.7f to Color.Transparent,
                     1f to Color.White.copy(alpha = 0.04f),
@@ -82,9 +89,7 @@ fun Modifier.liquidGlass(
             // Rim light.
             .border(
                 1.dp,
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.12f)),
-                ),
+                Brush.verticalGradient(rim),
                 shape,
             )
     }

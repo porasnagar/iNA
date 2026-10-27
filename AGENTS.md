@@ -1,0 +1,11 @@
+# Android app rules
+
+- Android product art is real PNGs in `app/src/main/res/drawable-nodpi/product_*.png` (downscaled copies of `src/assets/*.png`) referenced by `ProductArtKey.drawable`; regenerate them when the web renders change, because GitHub CI builds only what is in the repo.
+- Case-open pop-up frequency is decided only by `CasePopupGate` (in-app sheet, overlay, fallback Activity, heads-up): a close snoozes it until the lid is seen closed (byte 8 bit 3) or the case goes quiet; every close path must report `onDismissed`/`onHidden`, and `CasePopupGateTest.kt` covers the rules. Without overlay permission the service posts the heads-up instead of a background Activity start, because Android blocks those silently.
+- Connect prefers AirPods already bonded in Android Bluetooth, then CompanionDeviceManager + createBond; the AAP channel tries a classic L2CAP `BluetoothSocket` via HiddenApiBypass first, and the app reports not connected rather than claiming a link it doesn't have.
+- Android Kotlin can be compiled and its JVM/Robolectric tests run in the sandbox with a Nix JDK 17 + downloaded SDK/Gradle 8.11.1 against a /tmp copy of this folder (never build inside the repo).
+- On Android, glass comes from `LocalGlass` (provided by `InaTheme` from `InaSettings.reduceTransparency`); set `backdropBlurred` only where something actually blurs the backdrop, so unblurred surfaces stay near-opaque for legibility.
+- Release APK signing reads `INA_KEYSTORE_FILE` / `INA_KEYSTORE_PASSWORD` / `INA_KEY_ALIAS` / `INA_KEY_PASSWORD` env vars and falls back to debug signing; release lint is advisory so CI never fails on it.
+- Android windows request the panel's fastest refresh rate via `HighRefreshRate.apply(...)` (activities and the WindowManager overlay); apply it to any new window.
+- Android releases are driven by tags: a new `versionName` in `app/build.gradle.kts` makes CI tag `v<versionName>` and publish a GitHub Release; bump it to ship.
+- Android screens mirror the simulator layout (floating glass tab bar, Connect radar + steps, Learn More tabs, Now Playing, in-ear row); simulator-matching parts live in `ScreenParts.kt`, and scrolling screens end with `TAB_BAR_CLEARANCE` padding.

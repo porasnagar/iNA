@@ -20,7 +20,7 @@ Package `dev.ibridge.android` · Android 10 (API 29) to Android 16 (API 36) · z
 | `AppleDevices.kt` | Apple Watch (GATT heart rate/battery + ANCS), AirTag (Find My 0x12 scanner, distance, Play Sound), HomePod (Bonjour discovery) |
 | `LiquidGlass.kt` | Liquid Glass surfaces, Android 12+ blur-behind, Reduce Transparency |
 | `NextActionAdvisor.kt` | Suggested next action on the AirPods screen |
-| `EmbeddedProductArt.kt` | Base64 copies of the product renders (also in `res/drawable-nodpi/`) |
+| `res/drawable-nodpi/product_*.png` | 3D product renders shown on every screen and pop-up |
 
 ## OTA rules
 
@@ -35,8 +35,12 @@ from `src/android/` on the `website` branch — make changes there, not here.
 
 Each change builds one `iNA-apks` artifact (kept 3 days) with:
 
-- the test build (debug, debuggable)
-- the release build (R8-optimised)
+- the test build (debug, debuggable) — keeps developer tools: the Protocol Rules tab,
+  Preview Connected UI and protocol hex labels
+- the release build (R8-optimised) — only Device, Controls and Settings
+
+Both builds use the same package name, so uninstall one before installing the other if Android
+says the app can't be updated.
 
 **Versions are tags.** Bump `versionName` in `app/build.gradle.kts`; the next build tags this
 branch `v<versionName>` and publishes a GitHub Release with both APKs. Pushing a `v*` tag on

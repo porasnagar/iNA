@@ -3,12 +3,13 @@
 package dev.ibridge.android
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.os.Build
+import android.os.ParcelUuid
 import android.os.SystemClock
 import android.telecom.TelecomManager
 import android.util.Base64
@@ -23,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,20 +74,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -97,13 +98,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -111,6 +113,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -136,6 +139,7 @@ import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.HttpsURLConnection
+import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 private const val TAG = "iNA"
 
@@ -158,14 +162,15 @@ enum class ListeningMode(val aapValue: Int, val label: String, val shortLabel: S
 
 enum class ModelFamily { AIRPODS, AIRPODS_PRO, AIRPODS_MAX, BEATS }
 
-enum class ProductArtKey(val resName: String) {
-    AIRPODS_PRO("product_airpods_pro"),
-    AIRPODS_4("product_airpods_4"),
-    AIRPODS_MAX("product_airpods_max"),
-    BEATS_FIT_PRO("product_beats_fit_pro"),
-    APPLE_WATCH("product_apple_watch"),
-    AIRTAG("product_airtag"),
-    HOMEPOD("product_homepod"),
+/** Real 3D product renders shipped as PNGs in res/drawable-nodpi. */
+enum class ProductArtKey(val drawable: Int) {
+    AIRPODS_PRO(R.drawable.product_airpods_pro),
+    AIRPODS_4(R.drawable.product_airpods_4),
+    AIRPODS_MAX(R.drawable.product_airpods_max),
+    BEATS_FIT_PRO(R.drawable.product_beats_fit_pro),
+    APPLE_WATCH(R.drawable.product_apple_watch),
+    AIRTAG(R.drawable.product_airtag),
+    HOMEPOD(R.drawable.product_homepod),
 }
 
 @Immutable
@@ -211,6 +216,9 @@ object AppleProtocolSpec {
     const val DEFAULT_L2CAP_PSM = 0x1001
     const val POPUP_RSSI_THRESHOLD = -68
 
+    /** SDP record AirPods publish for AAP. BluetoothSocket needs a UUID even for a raw L2CAP PSM. */
+    const val AAP_UUID = "74ec2172-0bad-4d01-8f77-997b2be0722a"
+
     // AAP control setting identifiers (04 00 04 00 09 00 [id] [value] 00 00 00)
     const val SETTING_LISTENING_MODE = 0x0D
     const val SETTING_STEM_LONG_PRESS = 0x16
@@ -230,6 +238,8 @@ object AppleProtocolSpec {
     const val OPCODE_CONVERSATION = 0x4B
 
     val HANDSHAKE: ByteArray = byteArrayOf(0x00, 0x00, 0x04, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+    /** Turns on the extended feature set (gestures, conversation awareness) before notifications. */
+    val SET_FEATURES: ByteArray = byteArrayOf(0x04, 0x00, 0x04, 0x00, 0x4D, 0x00, 0xFF.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
     val ENABLE_NOTIFICATIONS: ByteArray = byteArrayOf(0x04, 0x00, 0x04, 0x00, 0x0F, 0x00, 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte())
     val FIT_TEST_START: ByteArray = byteArrayOf(0x04, 0x00, 0x04, 0x00, 0x1B, 0x00, 0x01, 0x00)
 
@@ -313,11 +323,17 @@ fun formatBattery(level: Int): String = if (level in 0..100) "$level%" else "--%
  * 2. STATE
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-enum class LinkTier(val label: String) {
-    NONE("Not connected"),
-    L2CAP_COC("Tier 1 · L2CAP CoC"),
-    L2CAP_REFLECTION("Tier 2 · reflected L2CAP"),
-    BLE_ONLY("Tier 3 · BLE telemetry"),
+/** [label] is the developer wording (debug builds); [userLabel] is what release builds show. */
+enum class LinkTier(val label: String, val userLabel: String) {
+    NONE("Not connected", "Not connected"),
+    L2CAP_DIRECT("Tier 1 · L2CAP 0x1001", "Connected"),
+    L2CAP_REFLECTION("Tier 2 · reflected L2CAP", "Connected"),
+    L2CAP_COC("Tier 2 · LE CoC", "Connected"),
+    BLE_ONLY("Tier 3 · BLE telemetry", "Connected · battery only"),
+    ;
+
+    val hasControls: Boolean get() = this != NONE && this != BLE_ONLY
+    val display: String get() = if (BuildConfig.DEBUG) label else userLabel
 }
 
 enum class StemAction(val label: String, val aapValue: Int) {
@@ -342,6 +358,8 @@ data class AirPodsState(
     val leftInEar: Boolean = false,
     val rightInEar: Boolean = false,
     val lidOpenCounter: Int = -1,
+    /** true = lid closed, false = open, null = this advert doesn't say. */
+    val lidClosed: Boolean? = null,
     val rssi: Int = Int.MIN_VALUE,
     val listeningMode: ListeningMode = ListeningMode.OFF,
     val conversationAwareness: Boolean = false,
@@ -376,22 +394,36 @@ object ProximityPacketParser {
     /**
      * [data] is the manufacturer-specific payload for company 0x004C
      * (ScanRecord.getManufacturerSpecificData(0x004C)).
+     *
+     * Byte 5 bit 5 says which AirPod is broadcasting. When it is the left one, byte 6 carries
+     * left in the low nibble and right in the high nibble; when it is the right one they swap,
+     * and so do the charging bits. Without this, half of all AirPods show left/right swapped.
+     * Byte 8: bits 0-2 lid-open counter, bit 3 lid closed (only meaningful while the
+     * broadcasting AirPod sits in the case, byte 5 bit 6).
+     * Mirrors parseProximityPacket in src/lib/ina/protocol.ts.
      */
     fun parse(data: ByteArray?, rssi: Int): AirPodsState? {
         if (data == null || data.size < 9) return null
         if (data[0].toInt() and 0xFF != AppleProtocolSpec.TYPE_PROXIMITY_PAIRING) return null
         val b = IntArray(data.size) { data[it].toInt() and 0xFF }
+        val status = b[5]
+        val leftPrimary = status and 0x20 != 0
+        val podInCase = status and 0x40 != 0
+        val swapEar = !leftPrimary xor podInCase
+        val hi = (b[6] shr 4) and 0x0F
+        val lo = b[6] and 0x0F
         return AirPodsState(
             modelId = (b[3] shl 8) or b[4],
-            leftInEar = b[5] and 0b0000_0010 != 0,
-            rightInEar = b[5] and 0b0000_1000 != 0,
-            leftBattery = nibble((b[6] shr 4) and 0x0F),
-            rightBattery = nibble(b[6] and 0x0F),
+            leftInEar = status and (if (swapEar) 0b0000_1000 else 0b0000_0010) != 0,
+            rightInEar = status and (if (swapEar) 0b0000_0010 else 0b0000_1000) != 0,
+            leftBattery = nibble(if (leftPrimary) lo else hi),
+            rightBattery = nibble(if (leftPrimary) hi else lo),
             caseBattery = nibble(b[7] and 0x0F),
-            leftCharging = b[7] and 0b0001_0000 != 0,
-            rightCharging = b[7] and 0b0010_0000 != 0,
-            caseCharging = b[7] and 0b0100_0000 != 0,
+            leftCharging = b[7] and (if (leftPrimary) 0x10 else 0x20) != 0,
+            rightCharging = b[7] and (if (leftPrimary) 0x20 else 0x10) != 0,
+            caseCharging = b[7] and 0x40 != 0,
             lidOpenCounter = b[8] and 0x07,
+            lidClosed = if (podInCase) (b[8] and 0x08) != 0 else null,
             rssi = rssi,
         )
     }
@@ -440,6 +472,82 @@ object IBridgeStateStore {
     fun reset() = _state.update { AirPodsState.DISCONNECTED }
 }
 
+/**
+ * Decides when the case-open pop-up may appear, so it behaves like iPhone: every time the lid
+ * opens, never stacked, and once closed it stays closed until the lid is shut and opened again.
+ * Shared by the in-app sheet, the overlay window, the fallback Activity and the heads-up
+ * notification. Covered by CasePopupGateTest.
+ */
+object CasePopupGate {
+    /** No adverts from a model for this long means the case was closed or carried away. */
+    const val CASE_AWAY_MS = 10_000L
+    /** Minimum gap between two pop-ups, so one lid opening never shows two. */
+    const val MIN_INTERVAL_MS = 4_000L
+    /** Safety net: if the lid closing is never seen, a closed pop-up may return after this. */
+    const val DISMISS_SNOOZE_MS = 10 * 60_000L
+    /** A pop-up that never reported back is considered gone after this. */
+    const val SHOWING_TIMEOUT_MS = 60_000L
+
+    private class Seen(val counter: Int, val at: Long, val closed: Boolean)
+
+    private val seen = HashMap<Int, Seen>()
+    private val snoozedUntil = HashMap<Int, Long>()
+    private var lastShownAt = Long.MIN_VALUE / 2
+    private var showing = false
+
+    /**
+     * True when this advert is a fresh case opening: first sighting, the lid was seen closed
+     * before, the case reappeared after being away, or the lid counter moved.
+     * Seeing the lid closed (or the case going quiet) re-arms a pop-up the user had closed.
+     */
+    @Synchronized
+    fun isNewCaseOpen(packet: AirPodsState, now: Long): Boolean {
+        val prev = seen[packet.modelId]
+        val closedNow = packet.lidClosed == true
+        val away = prev != null && now - prev.at > CASE_AWAY_MS
+        if (closedNow || away) snoozedUntil.remove(packet.modelId)
+        seen[packet.modelId] = Seen(packet.lidOpenCounter, now, closedNow)
+        if (closedNow) return false
+        if (packet.rssi <= AppleProtocolSpec.POPUP_RSSI_THRESHOLD) return false
+        if (prev == null) return true
+        return prev.closed || away || prev.counter != packet.lidOpenCounter
+    }
+
+    /** Reserves the pop-up slot. Call [onDismissed] or [onHidden] when it goes away. */
+    @Synchronized
+    fun tryOpen(modelId: Int, now: Long, myModelId: Int = -1): Boolean {
+        if (myModelId >= 0 && modelId != myModelId) return false
+        if (showing && now - lastShownAt < SHOWING_TIMEOUT_MS) return false
+        if (now < (snoozedUntil[modelId] ?: Long.MIN_VALUE)) return false
+        if (now - lastShownAt < MIN_INTERVAL_MS) return false
+        showing = true
+        lastShownAt = now
+        return true
+    }
+
+    /** The user closed it (X, swipe, tap outside, Done): it stays closed for this lid opening. */
+    @Synchronized
+    fun onDismissed(modelId: Int, now: Long) {
+        showing = false
+        snoozedUntil[modelId] = now + DISMISS_SNOOZE_MS
+    }
+
+    /** It hid itself ([ignored]) or the user tapped Connect. Ignored ones also stay away for this opening. */
+    @Synchronized
+    fun onHidden(modelId: Int, now: Long, ignored: Boolean = false) {
+        showing = false
+        if (ignored) snoozedUntil[modelId] = now + DISMISS_SNOOZE_MS
+    }
+
+    @Synchronized
+    fun reset() {
+        seen.clear()
+        snoozedUntil.clear()
+        lastShownAt = Long.MIN_VALUE / 2
+        showing = false
+    }
+}
+
 /** User preferences that are not stored on the accessory itself. */
 @Immutable
 data class InaSettings(
@@ -452,7 +560,13 @@ data class InaSettings(
     val reduceTransparency: Boolean = false,
     /** Forward Android notifications to Apple Watch over ANCS. */
     val watchNotifications: Boolean = true,
+    /** Display › Appearance. */
+    val appearance: Appearance = Appearance.SYSTEM,
+    /** Model of the AirPods last connected here; pop-ups for other people's AirPods are ignored. */
+    val myModelId: Int = -1,
 )
+
+enum class Appearance(val label: String) { SYSTEM("Automatic"), LIGHT("Light"), DARK("Dark") }
 
 class InaSettingsStore(context: Context) {
     private val prefs = context.getSharedPreferences("ina_settings", Context.MODE_PRIVATE)
@@ -467,6 +581,8 @@ class InaSettingsStore(context: Context) {
         loudSoundReduction = prefs.getBoolean("loud_sound_reduction", true),
         reduceTransparency = prefs.getBoolean("reduce_transparency", false),
         watchNotifications = prefs.getBoolean("watch_notifications", true),
+        appearance = runCatching { Appearance.valueOf(prefs.getString("appearance", Appearance.SYSTEM.name)!!) }.getOrDefault(Appearance.SYSTEM),
+        myModelId = prefs.getInt("my_model_id", -1),
     )
 
     fun update(transform: (InaSettings) -> InaSettings) {
@@ -479,6 +595,8 @@ class InaSettingsStore(context: Context) {
             .putBoolean("loud_sound_reduction", next.loudSoundReduction)
             .putBoolean("reduce_transparency", next.reduceTransparency)
             .putBoolean("watch_notifications", next.watchNotifications)
+            .putString("appearance", next.appearance.name)
+            .putInt("my_model_id", next.myModelId)
             .apply()
         _settings.value = next
     }
@@ -646,42 +764,71 @@ class AirPodsProController(
 
     val isLinked: Boolean get() = socket?.isConnected == true
 
+    /**
+     * Opens the AAP control channel. Returns [LinkTier.NONE] when the AirPods are not actually
+     * linked to this phone, so the UI never claims a connection that does not exist.
+     */
     suspend fun connect(device: BluetoothDevice): LinkTier = withContext(Dispatchers.IO) {
         disconnect(resetState = false)
         val psm = rules.rules.value.l2capPsm
         val opened = openSocket(device, psm)
         if (opened == null) {
-            // Tier 3: BLE 0x07 still delivers battery, charging, lid and in-ear state.
+            if (!BluetoothLink.isAclConnected(device)) {
+                Log.i(TAG, "AAP link failed and ${device.address} is not connected")
+                IBridgeStateStore.update { it.copy(connected = false, isPreview = false, linkTier = LinkTier.NONE) }
+                return@withContext LinkTier.NONE
+            }
+            // Audio is up but the control channel is not: BLE 0x07 still delivers battery, lid and in-ear state.
             IBridgeStateStore.update { it.copy(connected = true, isPreview = false, linkTier = LinkTier.BLE_ONLY, deviceAddress = device.address) }
+            rememberModel()
             return@withContext LinkTier.BLE_ONLY
         }
         val (sock, tier) = opened
         socket = sock
-        sock.outputStream.write(AppleProtocolSpec.HANDSHAKE)
-        sock.outputStream.write(AppleProtocolSpec.ENABLE_NOTIFICATIONS)
-        sock.outputStream.flush()
+        runCatching {
+            sock.outputStream.write(AppleProtocolSpec.HANDSHAKE)
+            sock.outputStream.flush()
+            delay(150)
+            sock.outputStream.write(AppleProtocolSpec.SET_FEATURES)
+            sock.outputStream.write(AppleProtocolSpec.ENABLE_NOTIFICATIONS)
+            sock.outputStream.flush()
+        }.onFailure { Log.w(TAG, "AAP handshake failed", it) }
         IBridgeStateStore.update { it.copy(connected = true, isPreview = false, linkTier = tier, deviceAddress = device.address) }
+        rememberModel()
         readJob = scope.launch(Dispatchers.IO) { readLoop(sock) }
         Log.i(TAG, "AAP link up on PSM ${AppleProtocolSpec.hex(psm)} via $tier")
         tier
     }
 
+    private fun rememberModel() {
+        val id = IBridgeStateStore.state.value.modelId
+        if (id >= 0) InaGraph.settings(context).update { it.copy(myModelId = id) }
+    }
+
     private fun openSocket(device: BluetoothDevice, psm: Int): Pair<BluetoothSocket, LinkTier>? {
-        // Tier 1 — public L2CAP connection-oriented channel API (API 29+).
+        BluetoothLink.allowHiddenApis()
+        // Tier 1 — classic BR/EDR L2CAP socket on the AAP PSM, which is what AirPods listen on.
+        for (s in BluetoothLink.classicL2capSockets(device, psm)) {
+            runCatching { s.connect(); return s to LinkTier.L2CAP_DIRECT }
+                .onFailure { Log.d(TAG, "Tier 1 failed: ${it.message}"); runCatching { s.close() } }
+        }
+        // Tier 2a — hidden BluetoothDevice#createL2capSocket / createInsecureL2capSocket.
+        for (name in listOf("createL2capSocket", "createInsecureL2capSocket")) {
+            runCatching {
+                val method = BluetoothDevice::class.java.getMethod(name, Int::class.javaPrimitiveType)
+                val s = method.invoke(device, psm) as BluetoothSocket
+                try { s.connect() } catch (e: IOException) { runCatching { s.close() }; throw e }
+                return s to LinkTier.L2CAP_REFLECTION
+            }.onFailure { Log.d(TAG, "Tier 2 ($name) failed: ${it.message}") }
+        }
+        // Tier 2b — public LE connection-oriented channel (some newer firmwares).
         for (secure in listOf(false, true)) {
             runCatching {
                 val s = if (secure) device.createL2capChannel(psm) else device.createInsecureL2capChannel(psm)
-                s.connect()
+                try { s.connect() } catch (e: IOException) { runCatching { s.close() }; throw e }
                 return s to LinkTier.L2CAP_COC
-            }.onFailure { Log.d(TAG, "Tier 1 (${if (secure) "secure" else "insecure"}) failed: ${it.message}") }
+            }.onFailure { Log.d(TAG, "LE CoC (${if (secure) "secure" else "insecure"}) failed: ${it.message}") }
         }
-        // Tier 2 — hidden BluetoothDevice#createL2capSocket(int) for OEM stacks that block CoC.
-        runCatching {
-            val method = BluetoothDevice::class.java.getMethod("createL2capSocket", Int::class.javaPrimitiveType)
-            val s = method.invoke(device, psm) as BluetoothSocket
-            s.connect()
-            return s to LinkTier.L2CAP_REFLECTION
-        }.onFailure { Log.d(TAG, "Tier 2 failed: ${it.message}") }
         return null
     }
 
@@ -912,23 +1059,62 @@ object InaGraph {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 5. PRODUCT ART — real 3D renders (drawable-nodpi + embedded Base64 copy)
+ * 5. BLUETOOTH LINK HELPERS — bonded AirPods, ACL state, classic L2CAP sockets
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-object ProductArt {
-    private val cache = ConcurrentHashMap<ProductArtKey, ImageBitmap>()
+@SuppressLint("MissingPermission")
+object BluetoothLink {
+    private const val TYPE_L2CAP = 3
+    private val APPLE_AUDIO = Regex("(?i).*(airpods|beats|powerbeats).*")
+    @Volatile private var exempted = false
 
-    fun bitmap(context: Context, key: ProductArtKey): ImageBitmap? = cache[key] ?: decode(context, key)?.also { cache[key] = it }
+    /** Lets reflection reach BluetoothSocket / BluetoothDevice internals (no root needed). */
+    fun allowHiddenApis() {
+        if (exempted) return
+        exempted = runCatching { HiddenApiBypass.addHiddenApiExemptions("Landroid/bluetooth/") }.getOrDefault(false)
+    }
 
-    private fun decode(context: Context, key: ProductArtKey): ImageBitmap? {
-        EmbeddedProductArt.base64(key.resName)?.let { b64 ->
-            val bytes = Base64.decode(b64, Base64.DEFAULT)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { return it.asImageBitmap() }
+    fun isAppleAudio(device: BluetoothDevice): Boolean = runCatching { device.name }.getOrNull()?.matches(APPLE_AUDIO) == true
+
+    /** AirPods / Beats already paired in Android Bluetooth settings, best match for [modelName] first. */
+    fun bondedAppleAudio(context: Context, modelName: String?): List<BluetoothDevice> {
+        val adapter = context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return emptyList()
+        val bonded = runCatching { adapter.bondedDevices.orEmpty().filter(::isAppleAudio) }.getOrDefault(emptyList())
+        val words = modelName?.lowercase()?.split(" ", "(", ")")?.filter { it.length > 1 }.orEmpty()
+        return bonded.sortedByDescending { d ->
+            val name = runCatching { d.name }.getOrNull()?.lowercase().orEmpty()
+            (if (isAclConnected(d)) 100 else 0) + words.count { it in name }
         }
-        @SuppressLint("DiscouragedApi")
-        val id = context.resources.getIdentifier(key.resName, "drawable", context.packageName)
-        if (id == 0) return null
-        return BitmapFactory.decodeResource(context.resources, id)?.asImageBitmap()
+    }
+
+    /** BluetoothDevice#isConnected is hidden; when it can't be read, assume the link is up. */
+    fun isAclConnected(device: BluetoothDevice): Boolean {
+        allowHiddenApis()
+        return runCatching { BluetoothDevice::class.java.getMethod("isConnected").invoke(device) as Boolean }.getOrDefault(true)
+    }
+
+    /** Candidate classic L2CAP sockets, covering the BluetoothSocket constructors of Android 10–16. */
+    fun classicL2capSockets(device: BluetoothDevice, psm: Int): Sequence<BluetoothSocket> = sequence {
+        allowHiddenApis()
+        val uuid = ParcelUuid.fromString(AppleProtocolSpec.AAP_UUID)
+        val argSets: List<Array<Any?>> = listOf(
+            arrayOf(device, TYPE_L2CAP, true, true, psm, uuid),
+            arrayOf(device, TYPE_L2CAP, true, true, psm, uuid, false, false),
+            arrayOf(TYPE_L2CAP, -1, true, true, device, psm, uuid),
+            arrayOf(TYPE_L2CAP, -1, true, true, device, psm, uuid, false, false),
+            arrayOf(TYPE_L2CAP, true, true, device, psm, uuid),
+        )
+        val constructors = runCatching { BluetoothSocket::class.java.declaredConstructors.toList() }.getOrDefault(emptyList())
+        for (ctor in constructors) {
+            for (args in argSets) {
+                if (ctor.parameterCount != args.size) continue
+                val socket = runCatching {
+                    ctor.isAccessible = true
+                    ctor.newInstance(*args) as BluetoothSocket
+                }.getOrNull()
+                if (socket != null) yield(socket)
+            }
+        }
     }
 }
 
@@ -936,33 +1122,102 @@ object ProductArt {
  * 6. DESIGN SYSTEM
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+@Immutable
+data class InaPalette(
+    val isLight: Boolean,
+    val background: Color,
+    val card: Color,
+    val elevated: Color,
+    val primary: Color,
+    val success: Color,
+    val warning: Color,
+    val destructive: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val hairline: Color,
+    val iconTile: Color,
+)
+
+/** Original Apple dark palette. */
+val DarkPalette = InaPalette(
+    isLight = false,
+    background = Color(0xFF111114),
+    card = Color(0xFF1C1C1F),
+    elevated = Color(0xFF2A2A2E),
+    primary = Color(0xFF0A84FF),
+    success = Color(0xFF30D158),
+    warning = Color(0xFFFF9F0A),
+    destructive = Color(0xFFFF453A),
+    textPrimary = Color(0xFFF5F5F7),
+    textSecondary = Color(0xFF9A9AA2),
+    hairline = Color(0x17FFFFFF),
+    iconTile = Color(0xFF3A3A3F),
+)
+
+/** Apple light palette: grouped grey background, white cards, same single blue accent. */
+val LightPalette = InaPalette(
+    isLight = true,
+    background = Color(0xFFF2F2F7),
+    card = Color(0xFFFFFFFF),
+    elevated = Color(0xFFE9E9EE),
+    primary = Color(0xFF007AFF),
+    success = Color(0xFF34C759),
+    warning = Color(0xFFFF9500),
+    destructive = Color(0xFFFF3B30),
+    textPrimary = Color(0xFF111114),
+    textSecondary = Color(0xFF6E6E73),
+    hairline = Color(0x1F3C3C43),
+    iconTile = Color(0xFF8E8E93),
+)
+
+/**
+ * Colours read from the active palette. Backed by snapshot state, so composables and draw
+ * lambdas that read them update when Appearance changes. [InaTheme] sets [palette].
+ */
 object InaColors {
-    val Background = Color(0xFF111114)
-    val Card = Color(0xFF1C1C1F)
-    val Elevated = Color(0xFF2A2A2E)
-    val Primary = Color(0xFF0A84FF)
-    val Success = Color(0xFF30D158)
-    val Warning = Color(0xFFFF9F0A)
-    val Destructive = Color(0xFFFF453A)
-    val TextPrimary = Color(0xFFF5F5F7)
-    val TextSecondary = Color(0xFF9A9AA2)
-    val Hairline = Color(0x17FFFFFF)
-    val Purple = Color(0xFF3A3A3F)
-    val Teal = Color(0xFF3A3A3F)
-    val Orange = Color(0xFF3A3A3F)
+    var palette: InaPalette by mutableStateOf(DarkPalette)
+
+    val Background: Color get() = palette.background
+    val Card: Color get() = palette.card
+    val Elevated: Color get() = palette.elevated
+    val Primary: Color get() = palette.primary
+    val Success: Color get() = palette.success
+    val Warning: Color get() = palette.warning
+    val Destructive: Color get() = palette.destructive
+    val TextPrimary: Color get() = palette.textPrimary
+    val TextSecondary: Color get() = palette.textSecondary
+    val Hairline: Color get() = palette.hairline
+    val Purple: Color get() = palette.iconTile
+    val Teal: Color get() = palette.iconTile
+    val Orange: Color get() = palette.iconTile
 }
 
 @Composable
 fun InaTheme(content: @Composable () -> Unit) {
     val settings by InaGraph.settings(LocalContext.current).settings.collectAsState()
+    val dark = when (settings.appearance) {
+        Appearance.SYSTEM -> isSystemInDarkTheme()
+        Appearance.LIGHT -> false
+        Appearance.DARK -> true
+    }
+    // Set before any child reads a colour, so this composition is already in the right palette.
+    InaColors.palette = if (dark) DarkPalette else LightPalette
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
     val glass = LocalGlass.current.copy(reduceTransparency = settings.reduceTransparency)
-    CompositionLocalProvider(LocalGlass provides glass) { InaMaterialTheme(content) }
+    CompositionLocalProvider(LocalGlass provides glass) { InaMaterialTheme(dark, content) }
 }
 
 @Composable
-private fun InaMaterialTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
+private fun InaMaterialTheme(dark: Boolean, content: @Composable () -> Unit) {
+    val scheme = if (dark) {
+        darkColorScheme(
             primary = InaColors.Primary,
             onPrimary = Color.White,
             background = InaColors.Background,
@@ -972,10 +1227,25 @@ private fun InaMaterialTheme(content: @Composable () -> Unit) {
             surfaceVariant = InaColors.Elevated,
             onSurfaceVariant = InaColors.TextSecondary,
             error = InaColors.Destructive,
-        ),
-        content = content,
-    )
+        )
+    } else {
+        lightColorScheme(
+            primary = InaColors.Primary,
+            onPrimary = Color.White,
+            background = InaColors.Background,
+            onBackground = InaColors.TextPrimary,
+            surface = InaColors.Card,
+            onSurface = InaColors.TextPrimary,
+            surfaceVariant = InaColors.Elevated,
+            onSurfaceVariant = InaColors.TextSecondary,
+            error = InaColors.Destructive,
+        )
+    }
+    MaterialTheme(colorScheme = scheme, content = content)
 }
+
+/** Developer-only text: shown in debug builds, hidden from release builds. */
+fun devOnly(text: String): String? = if (BuildConfig.DEBUG) text else null
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 7. COMPOSE UI
@@ -1049,41 +1319,30 @@ fun InaApp(
             OnboardingWizard(onboarding, permissions)
             return@Box
         }
+        val tabs = remember { InaTab.entries.filter { it != InaTab.RULES || BuildConfig.DEBUG } }
         var tab by rememberSaveable { mutableStateOf(InaTab.DEVICE) }
         var other by rememberSaveable { mutableStateOf<OtherDeviceKind?>(null) }
         // Liquid Glass: blur the app behind the in-app case pop-up (Android 12+, unless Reduce Transparency).
         val blurBackdrop = inlinePopup != null && !settings.reduceTransparency && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        Column(Modifier.fillMaxSize().then(if (blurBackdrop) Modifier.blur(24.dp) else Modifier)) {
-            Box(Modifier.weight(1f)) {
-                val openOther = other
-                when (tab) {
-                    InaTab.DEVICE -> when {
-                        openOther != null -> OtherDeviceScreen(openOther, onClose = { other = null })
-                        state.connected -> DeviceScreen(state, actions, onOpenControls = { tab = InaTab.CONTROLS })
-                        else -> ConnectDeviceScreen(state, actions, onOpenOther = { other = it })
-                    }
-                    InaTab.CONTROLS -> ControlsScreen(state, settings, actions)
-                    InaTab.RULES -> RulesScreen(rules, rulesSyncing, actions)
-                    InaTab.SETTINGS -> SettingsScreen(state, settings, onboarding, actions, permissions)
+        Box(Modifier.fillMaxSize().then(if (blurBackdrop) Modifier.blur(24.dp) else Modifier)) {
+            val openOther = other
+            when (tab) {
+                InaTab.DEVICE -> when {
+                    openOther != null -> OtherDeviceScreen(openOther, onClose = { other = null })
+                    state.connected -> DeviceScreen(state, actions, onOpenControls = { tab = InaTab.CONTROLS })
+                    else -> ConnectDeviceScreen(state, actions, onOpenOther = { other = it })
                 }
+                InaTab.CONTROLS -> ControlsScreen(state, settings, actions)
+                InaTab.RULES -> RulesScreen(rules, rulesSyncing, actions)
+                InaTab.SETTINGS -> SettingsScreen(state, settings, onboarding, actions, permissions)
             }
-            NavigationBar(containerColor = InaColors.Background, tonalElevation = 0.dp) {
-                InaTab.entries.forEach { t ->
-                    NavigationBarItem(
-                        selected = tab == t,
-                        onClick = { tab = t },
-                        icon = { Icon(t.icon, contentDescription = t.label) },
-                        label = { Text(t.label, fontSize = 11.sp, maxLines = 1, softWrap = false) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = InaColors.Primary,
-                            selectedTextColor = InaColors.Primary,
-                            indicatorColor = Color.Transparent,
-                            unselectedIconColor = InaColors.TextSecondary,
-                            unselectedTextColor = InaColors.TextSecondary,
-                        ),
-                    )
-                }
-            }
+            // Floating Liquid Glass tab bar, the same as the simulator's; screens scroll under it.
+            FloatingTabBar(
+                items = tabs.map { it.label to it.icon },
+                selected = tabs.indexOf(tab),
+                onSelect = { tab = tabs[it] },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
         if (inlinePopup != null) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1096,8 +1355,8 @@ fun InaApp(
             ) {
                 CompositionLocalProvider(LocalGlass provides LocalGlass.current.copy(backdropBlurred = blurBackdrop)) {
                     AppleCaseOpenPopupSheet(
-                        state = inlinePopup,
-                        stage = if (inlinePopup.isPaired || state.connected) PopupStage.INFO_PAIRED else PopupStage.INFO_UNPAIRED,
+                        state = if (inlinePopup.modelId == state.modelId) state else inlinePopup,
+                        stage = if (state.connected) PopupStage.INFO_PAIRED else PopupStage.INFO_UNPAIRED,
                         pairingStep = 0,
                         onConnect = onPopupConnect,
                         onDismiss = onDismissPopup,
@@ -1113,13 +1372,7 @@ fun InaApp(
 
 @Composable
 fun ProductArtImage(key: ProductArtKey, contentDescription: String?, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val bitmap = remember(key) { ProductArt.bitmap(context, key) }
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = contentDescription, contentScale = ContentScale.Fit, modifier = modifier)
-    } else {
-        Box(modifier)
-    }
+    Image(painter = painterResource(key.drawable), contentDescription = contentDescription, contentScale = ContentScale.Fit, modifier = modifier)
 }
 
 @Composable
@@ -1202,7 +1455,7 @@ internal fun SettingRow(
     ) {
         if (icon != null) {
             Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(tint), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(icon, contentDescription = null, tint = if (tint.luminance() > 0.6f) InaColors.TextPrimary else Color.White, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(12.dp))
         }
@@ -1228,6 +1481,7 @@ internal fun ToggleRow(title: String, detail: String?, checked: Boolean, icon: I
 
 @Composable
 private fun PreviewToggleCard(state: AirPodsState, actions: InaActions) {
+    if (!BuildConfig.DEBUG) return
     Row(
         Modifier
             .padding(horizontal = 16.dp)
@@ -1239,7 +1493,7 @@ private fun PreviewToggleCard(state: AirPodsState, actions: InaActions) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text("Preview Connected UI", color = InaColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+            Text("Preview Connected UI · debug", color = InaColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
             Text("Explore the connected screens with simulated accessory values.", color = InaColors.TextSecondary, fontSize = 12.sp)
         }
         Switch(checked = state.isPreview, onCheckedChange = actions::setPreview)
@@ -1351,7 +1605,7 @@ fun OnboardingWizard(status: OnboardingStatus, permissions: PermissionActions) {
                 Spacer(Modifier.height(12.dp))
                 Text(page.body, color = InaColors.TextSecondary, fontSize = 15.sp)
                 Spacer(Modifier.height(16.dp))
-                Text(page.tech, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                devOnly(page.tech)?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace) }
                 Spacer(Modifier.weight(1f))
                 if (granted) PrimaryButton("Allowed · Continue") { index++ }
                 else {
@@ -1389,15 +1643,19 @@ private val LEARN_MORE = listOf(
 
 @Composable
 fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions, onOpenOther: (OtherDeviceKind) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Connect a Device", "Bring your Apple accessory close to this phone.")
         Card {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                ProductArtImage(ProductArtKey.AIRPODS_PRO, "AirPods Pro", Modifier.size(140.dp))
+            Box(Modifier.fillMaxWidth().height(208.dp), contentAlignment = Alignment.Center) {
+                RadarRings()
+                ProductArtImage(ProductArtKey.AIRPODS_PRO, "AirPods Pro", Modifier.size(128.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(InaColors.Hairline))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                PulseDot()
+                Spacer(Modifier.width(8.dp))
                 Text("Searching for nearby Apple accessories…", color = InaColors.TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("0x004C · 0x07", color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false)
+                devOnly("0x004C · 0x07")?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -1409,34 +1667,30 @@ fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions, onOpenOther: (
                 BatteryRing(-1, false, "Case", 64.dp)
             }
             Text(
-                "Battery levels appear once an accessory connects.",
+                "Battery levels appear once an accessory connects. iNA never shows your phone's battery in their place.",
                 color = InaColors.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )
         }
         Spacer(Modifier.height(16.dp))
-        PreviewToggleCard(state, actions)
+        ConnectSteps()
+        if (BuildConfig.DEBUG) {
+            Spacer(Modifier.height(16.dp))
+            PreviewToggleCard(state, actions)
+        }
         OtherDevicesList(onOpenOther)
         Spacer(Modifier.height(24.dp))
-        Text("Learn More", color = InaColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
-        Spacer(Modifier.height(8.dp))
-        LEARN_MORE.forEach { f -> LearnMoreFamily(f); Spacer(Modifier.height(8.dp)) }
-        Spacer(Modifier.height(16.dp))
-        Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("How iNA works", color = InaColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text("• Zero root: 100% user-space, public Bluetooth APIs.", color = InaColors.TextSecondary, fontSize = 13.sp)
-                Text("• BLE scanner filters Apple 0x004C, type 0x07 Proximity Pairing frames.", color = InaColors.TextSecondary, fontSize = 13.sp)
-                Text("• AAP over L2CAP PSM 0x1001 switches modes and reads gestures.", color = InaColors.TextSecondary, fontSize = 13.sp)
-                Text("• Signed OTA rules add new models without an app update.", color = InaColors.TextSecondary, fontSize = 13.sp)
+        LearnMoreSection {
+            Column {
+                LEARN_MORE.forEachIndexed { i, f -> LearnMoreFamily(f, startExpanded = i == 1); Spacer(Modifier.height(8.dp)) }
             }
         }
     }
 }
 
 @Composable
-private fun LearnMoreFamily(f: FamilyInfo) {
-    var expanded by rememberSaveable(f.title) { mutableStateOf(false) }
+private fun LearnMoreFamily(f: FamilyInfo, startExpanded: Boolean = false) {
+    var expanded by rememberSaveable(f.title) { mutableStateOf(startExpanded) }
     Card {
         Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ProductArtImage(f.art, f.title, Modifier.size(52.dp))
@@ -1449,10 +1703,10 @@ private fun LearnMoreFamily(f: FamilyInfo) {
         }
         AnimatedVisibility(expanded) {
             Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val names = f.family?.let { fam -> AppleProtocolSpec.MODEL_DATABASE.values.filter { it.family == fam }.sortedBy { it.id }.map { "${it.name} · ${AppleProtocolSpec.hex(it.id)}" } } ?: f.fixedModels
+                val names = f.family?.let { fam -> AppleProtocolSpec.MODEL_DATABASE.values.filter { it.family == fam }.sortedBy { it.id }.map { if (BuildConfig.DEBUG) "${it.name} · ${AppleProtocolSpec.hex(it.id)}" else it.name } } ?: f.fixedModels
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     names.forEach { n ->
-                        Text(n, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false,
+                        Text(n, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = if (BuildConfig.DEBUG) FontFamily.Monospace else FontFamily.Default, maxLines = 1, softWrap = false,
                             modifier = Modifier.clip(CircleShape).background(InaColors.Hairline).padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                 }
@@ -1467,17 +1721,29 @@ private fun LearnMoreFamily(f: FamilyInfo) {
 @Composable
 fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () -> Unit) {
     val model = state.model
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(if (state.isPreview) InaColors.Warning else InaColors.Success))
             Spacer(Modifier.width(8.dp))
-            Text(if (state.isPreview) "Preview · simulated values" else "Connected · ${state.linkTier.label}", color = InaColors.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(AppleProtocolSpec.hex(state.modelId), color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false)
+            val status = when {
+                state.isPreview -> "Preview · simulated values"
+                BuildConfig.DEBUG -> "Connected · ${state.linkTier.label}"
+                else -> state.linkTier.userLabel
+            }
+            Text(status, color = InaColors.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            devOnly(AppleProtocolSpec.hex(state.modelId))?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
         }
         Text(model?.name ?: "Apple accessory", color = InaColors.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp))
         SuggestedActionCard(state, actions, onOpenControls)
-        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-            ProductArtImage(model?.art ?: ProductArtKey.AIRPODS_PRO, model?.name, Modifier.size(180.dp))
+        if (!state.isPreview && state.linkTier == LinkTier.BLE_ONLY) {
+            Text(
+                "Battery and case status work. Noise control needs a direct link this phone's Bluetooth didn't allow; reconnect from the pop-up to try again.",
+                color = InaColors.TextSecondary, fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+        }
+        Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(200.dp).stage(), contentAlignment = Alignment.Center) {
+            ProductArtImage(model?.art ?: ProductArtKey.AIRPODS_PRO, model?.name, Modifier.size(180.dp).floating())
         }
         Card {
             Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.SpaceAround) {
@@ -1490,7 +1756,9 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 }
             }
         }
-        val modes = model?.caps?.supportedModes.orEmpty()
+        // Without the control channel, mode buttons would do nothing, so they are hidden.
+        val canControl = state.isPreview || state.linkTier.hasControls
+        val modes = if (canControl) model?.caps?.supportedModes.orEmpty() else emptyList()
         if (modes.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
             Card {
@@ -1504,16 +1772,31 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 }
             }
         }
-        if (model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
+        if (modes.isEmpty() && model != null && model.caps.supportedModes.isEmpty()) {
+            Text("${model.name} has no noise control hardware.", color = InaColors.TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        AirPodsNowPlayingCard(state, onResume = actions::resumeMedia)
+        Spacer(Modifier.height(8.dp))
+        EarStatusRow(state)
+        if (canControl && model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
             SectionTitle("Hearing")
             Card {
-                if (model.caps.conversationAwareness) ToggleRow("Conversation Awareness", "Lowers media when you speak · 0x28", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
-                if (model.caps.personalizedVolume) ToggleRow("Personalized Volume", "Adapts to your environment · 0x26", state.personalizedVolume, Icons.Rounded.Tune, InaColors.Primary, actions::setPersonalizedVolume)
+                if (model.caps.conversationAwareness) ToggleRow("Conversation Awareness", if (BuildConfig.DEBUG) "Lowers media when you speak · 0x28" else "Lowers media when you speak", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
+                if (model.caps.personalizedVolume) ToggleRow("Personalized Volume", if (BuildConfig.DEBUG) "Adapts to your environment · 0x26" else "Adapts to your environment", state.personalizedVolume, Icons.Rounded.Tune, InaColors.Primary, actions::setPersonalizedVolume)
             }
         }
         Spacer(Modifier.height(16.dp))
-        TextButton(onClick = actions::disconnect, modifier = Modifier.fillMaxWidth()) {
-            Text(if (state.isPreview) "Exit preview" else "Disconnect", color = InaColors.Destructive)
+        Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val secondary = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary)
+            Button(onClick = onOpenControls, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(16.dp), colors = secondary) {
+                Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("All controls", fontSize = 14.sp, maxLines = 1, softWrap = false)
+            }
+            Button(onClick = actions::disconnect, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(16.dp), colors = secondary) {
+                Text(if (state.isPreview) "Exit preview" else "Disconnect", color = InaColors.Destructive, fontSize = 14.sp, maxLines = 1, softWrap = false)
+            }
         }
     }
 }
@@ -1523,24 +1806,26 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
 @Composable
 fun ControlsScreen(state: AirPodsState, settings: InaSettings, actions: InaActions) {
     val model = state.model
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Controls", model?.name)
         if (!state.connected || model == null) {
             Card { Text("Connect a device to adjust controls.", color = InaColors.TextSecondary, modifier = Modifier.padding(20.dp)) }
-            Spacer(Modifier.height(16.dp))
-            PreviewToggleCard(state, actions)
+            if (BuildConfig.DEBUG) {
+                Spacer(Modifier.height(16.dp))
+                PreviewToggleCard(state, actions)
+            }
             return@Column
         }
         val c = model.caps
         if (c.inEarDetection) {
             SectionTitle("Detection")
-            Card { ToggleRow(if (c.hasCase) "Automatic Ear Detection" else "Automatic Head Detection", "In-ear optical sensor · auto-pause", settings.autoPause, Icons.Rounded.Hearing, InaColors.Success) { on -> actions.updateSettings { it.copy(autoPause = on) } } }
+            Card { ToggleRow(if (c.hasCase) "Automatic Ear Detection" else "Automatic Head Detection", "Pauses when you take them out", settings.autoPause, Icons.Rounded.Hearing, InaColors.Success) { on -> actions.updateSettings { it.copy(autoPause = on) } } }
         }
         if (c.conversationAwareness || c.personalizedVolume || c.anc) {
             SectionTitle("Hearing")
             Card {
-                if (c.conversationAwareness) ToggleRow("Conversation Awareness", "0x28 · voice accelerometer", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
-                if (c.personalizedVolume) ToggleRow("Personalized Volume", "0x26 · environment-aware", state.personalizedVolume, Icons.Rounded.Tune, InaColors.Primary, actions::setPersonalizedVolume)
+                if (c.conversationAwareness) ToggleRow("Conversation Awareness", if (BuildConfig.DEBUG) "0x28 · voice accelerometer" else "Lowers media when you speak", state.conversationAwareness, Icons.Rounded.Hearing, InaColors.Teal, actions::setConversationAwareness)
+                if (c.personalizedVolume) ToggleRow("Personalized Volume", if (BuildConfig.DEBUG) "0x26 · environment-aware" else "Adapts to your environment", state.personalizedVolume, Icons.Rounded.Tune, InaColors.Primary, actions::setPersonalizedVolume)
                 if (c.anc) ToggleRow("Loud Sound Reduction", "Limits sudden loud noise", settings.loudSoundReduction, Icons.Rounded.HearingDisabled, InaColors.Orange) { on -> actions.updateSettings { it.copy(loudSoundReduction = on) } }
             }
         }
@@ -1610,11 +1895,36 @@ private fun StemPicker(side: String, value: StemAction, onChange: (StemAction) -
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (a == value) InaColors.Elevated else Color.Transparent)
+                        .background(if (a == value) (if (InaColors.palette.isLight) InaColors.Card else InaColors.Elevated) else Color.Transparent)
                         .clickable { onChange(a) }
                         .padding(vertical = 6.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun <T> SegmentedPicker(options: List<T>, selected: T, label: (T) -> String, modifier: Modifier = Modifier, onSelect: (T) -> Unit) {
+    Row(modifier.clip(RoundedCornerShape(10.dp)).background(InaColors.Hairline).padding(2.dp)) {
+        options.forEach { o ->
+            val active = o == selected
+            Text(
+                label(o),
+                color = if (active) InaColors.TextPrimary else InaColors.TextSecondary,
+                fontSize = 12.sp,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (active) (if (InaColors.palette.isLight) InaColors.Card else InaColors.Elevated) else Color.Transparent)
+                    .clickable { onSelect(o) }
+                    .padding(vertical = 6.dp),
+            )
         }
     }
 }
@@ -1630,7 +1940,7 @@ fun RulesScreen(rules: OtaRules, syncing: Boolean, actions: InaActions) {
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(rules.rawJson) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Protocol Rules", "OtaProtocolRuleManager")
         Card {
             SettingRow("Rules v${rules.version}", "Signature: ${rules.signature}", icon = Icons.Rounded.Check, tint = InaColors.Success)
@@ -1698,11 +2008,15 @@ fun RulesScreen(rules: OtaRules, syncing: Boolean, actions: InaActions) {
 
 @Composable
 fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: OnboardingStatus, actions: InaActions, permissions: PermissionActions) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Settings")
         PreviewToggleCard(state, actions)
         SectionTitle("Display")
         Card {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Appearance", color = InaColors.TextPrimary, fontSize = 15.sp, modifier = Modifier.padding(end = 12.dp), maxLines = 1)
+                SegmentedPicker(Appearance.entries, settings.appearance, { it.label }, Modifier.weight(1f)) { a -> actions.updateSettings { it.copy(appearance = a) } }
+            }
             ToggleRow(
                 "Reduce Transparency",
                 if (settings.reduceTransparency) "Solid surfaces" else "Liquid Glass",
@@ -1720,12 +2034,22 @@ fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: Onboardin
         Card {
             PERMISSION_PAGES.forEach { p ->
                 val ok = status.granted(p.step)
-                SettingRow(p.title, p.tech, if (ok) "Allowed" else "Allow", p.icon, p.tint, onClick = if (ok) null else ({ permissions.request(p.step) }))
+                SettingRow(p.title, devOnly(p.tech), if (ok) "Allowed" else "Allow", p.icon, p.tint, onClick = if (ok) null else ({ permissions.request(p.step) }))
             }
             SettingRow("Run setup again", icon = Icons.Rounded.Refresh, tint = InaColors.Elevated, onClick = permissions::restartOnboarding)
         }
+        SectionTitle("Background")
+        Card {
+            SettingRow("Case pop-up listener", devOnly("IBridgeForegroundService · connectedDevice · BOOT_COMPLETED"), if (status.bluetooth) "On" else "Off", Icons.Rounded.Bolt, InaColors.Success)
+        }
+        Text(
+            if (status.overlay) "Starts with your phone, so the case pop-up shows on the Home Screen without opening iNA."
+            else "Allow \"Display over other apps\" above so the case pop-up can show on the Home Screen. Until then it arrives as a notification.",
+            color = InaColors.TextSecondary, fontSize = 12.sp,
+            modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 6.dp),
+        )
         SectionTitle("About")
-        Card { SettingRow("iNA", "dev.ibridge.android", "1.0.0") }
+        Card { SettingRow("iNA", if (BuildConfig.DEBUG) "Debug build · dev.ibridge.android" else null, BuildConfig.VERSION_NAME) }
     }
 }
 
@@ -1733,11 +2057,12 @@ fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: Onboardin
 
 enum class PopupStage { INFO_PAIRED, INFO_UNPAIRED, PAIRING, DONE }
 
+/** Connect steps: user wording first, developer detail (debug builds) second. */
 val PAIRING_STEPS = listOf(
-    "BluetoothDevice.createBond()",
-    "CompanionDeviceManager.associate()",
-    "A2DP + HFP profile connect",
-    "L2CAP PSM 0x1001 · AAP handshake",
+    "Finding your AirPods" to "bonded devices · CompanionDeviceManager",
+    "Pairing" to "BluetoothDevice.createBond()",
+    "Connecting audio" to "A2DP + HFP profile connect",
+    "Turning on controls" to "L2CAP PSM 0x1001 · AAP handshake",
 )
 
 @Composable
@@ -1748,6 +2073,9 @@ fun AppleCaseOpenPopupSheet(
     onConnect: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    message: String? = null,
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
 ) {
     val model = state.model
     Column(
@@ -1759,7 +2087,7 @@ fun AppleCaseOpenPopupSheet(
     ) {
         Box(Modifier.fillMaxWidth()) {
             Text(
-                model?.name ?: "Apple accessory ${AppleProtocolSpec.hex(state.modelId)}",
+                model?.name ?: if (BuildConfig.DEBUG) "Apple accessory ${AppleProtocolSpec.hex(state.modelId)}" else "AirPods",
                 color = InaColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center).padding(horizontal = 40.dp),
@@ -1771,7 +2099,7 @@ fun AppleCaseOpenPopupSheet(
         }
         Text(
             when (stage) {
-                PopupStage.INFO_PAIRED -> "Connected"
+                PopupStage.INFO_PAIRED -> if (state.connected) "Connected" else "Paired with this phone"
                 PopupStage.INFO_UNPAIRED -> "Not connected to this phone"
                 PopupStage.PAIRING -> "Connecting…"
                 PopupStage.DONE -> "Connected to this phone"
@@ -1792,28 +2120,52 @@ fun AppleCaseOpenPopupSheet(
         }
         if (stage == PopupStage.PAIRING) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PAIRING_STEPS.forEachIndexed { i, label ->
+                PAIRING_STEPS.forEachIndexed { i, (label, tech) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(20.dp).clip(CircleShape).background(if (i < pairingStep) InaColors.Success else InaColors.Hairline), contentAlignment = Alignment.Center) {
                             if (i < pairingStep) Icon(Icons.Rounded.Check, contentDescription = null, tint = InaColors.Background, modifier = Modifier.size(12.dp))
                             else if (i == pairingStep) CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp, color = InaColors.TextPrimary)
                         }
                         Spacer(Modifier.width(10.dp))
-                        Text(label, color = if (i <= pairingStep) InaColors.TextPrimary else InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Column {
+                            Text(label, color = if (i <= pairingStep) InaColors.TextPrimary else InaColors.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            devOnly(tech)?.let { Text(it, color = InaColors.TextSecondary, fontSize = 10.sp, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        }
                     }
                 }
+                if (pairingStep == 0) {
+                    Text(
+                        "New AirPods? Keep the case open and hold its button until the light flashes white.",
+                        color = InaColors.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
             }
+        }
+        if (message != null && stage != PopupStage.PAIRING) {
+            Text(message, color = InaColors.TextPrimary, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.height(20.dp))
         when (stage) {
             PopupStage.INFO_UNPAIRED -> Button(onClick = onConnect, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Connect", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text(if (message != null) "Try Again" else "Connect", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
-            PopupStage.INFO_PAIRED, PopupStage.DONE -> Button(
+            PopupStage.INFO_PAIRED -> if (!state.connected) Button(onClick = onConnect, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) {
+                Text("Connect", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            } else Button(
+                onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary),
+            ) { Text("Done", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
+            PopupStage.DONE -> Button(
                 onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary),
             ) { Text("Done", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
             PopupStage.PAIRING -> Unit
+        }
+        if (secondaryLabel != null && stage == PopupStage.INFO_UNPAIRED) {
+            TextButton(onClick = onSecondary, modifier = Modifier.fillMaxWidth()) {
+                Text(secondaryLabel, color = InaColors.Primary, fontSize = 14.sp)
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -59,7 +60,10 @@ class MainActivity : ComponentActivity() {
             val device = result.data?.let {
                 IntentCompat.getParcelableExtra(it, CompanionDeviceManager.EXTRA_DEVICE, android.bluetooth.BluetoothDevice::class.java)
             }
-            if (device != null) lifecycleScope.launch { InaGraph.controller(this@MainActivity).connect(device) }
+            if (device != null) lifecycleScope.launch {
+                if (device.bondState != android.bluetooth.BluetoothDevice.BOND_BONDED) device.createBond()
+                InaGraph.controller(this@MainActivity).connect(device)
+            }
             requestBatteryExemption()
         }
 
@@ -91,10 +95,15 @@ class MainActivity : ComponentActivity() {
                     actions = actions,
                     permissions = permissionActions,
                     onPopupConnect = {
+                        inlinePopup.value?.let { CasePopupGate.onHidden(it.modelId, SystemClock.elapsedRealtime()) }
                         inlinePopup.value = null
                         startActivity(CasePopupOverlayActivity.pairingIntent(this))
                     },
-                    onDismissPopup = { inlinePopup.value = null },
+                    onDismissPopup = {
+                        // Closing it keeps it closed: the same AirPods won't pop up again for a while.
+                        inlinePopup.value?.let { CasePopupGate.onDismissed(it.modelId, SystemClock.elapsedRealtime()) }
+                        inlinePopup.value = null
+                    },
                 )
             }
         }
@@ -257,7 +266,8 @@ class MainActivity : ComponentActivity() {
 
         override fun startFitTest() = controller.startFitTest()
         override fun playChirp(target: ChirpTarget?) = controller.playChirp(target)
-        override fun setPreview(on: Boolean) = IBridgeStateStore.setPreview(on)
+        // Preview Connected UI only exists in debug builds.
+        override fun setPreview(on: Boolean) { if (BuildConfig.DEBUG) IBridgeStateStore.setPreview(on) }
         override fun disconnect() = controller.disconnect()
 
         override fun resumeMedia() {

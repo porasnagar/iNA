@@ -662,7 +662,7 @@ fun OtherDeviceScreen(kind: OtherDeviceKind, onClose: () -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         Row(
             Modifier.padding(start = 8.dp, top = 8.dp).clip(CircleShape).clickable(onClick = onClose).padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -674,7 +674,7 @@ fun OtherDeviceScreen(kind: OtherDeviceKind, onClose: () -> Unit) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(if (live) InaColors.Success else InaColors.Warning))
             Spacer(Modifier.width(8.dp))
             Text(status, color = InaColors.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(kind.chip, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false)
+            devOnly(kind.chip)?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
         }
         Text(name, color = InaColors.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp))
         Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -717,10 +717,10 @@ private fun WatchPanel(link: WatchLink) {
     NowPlayingCard("Playing on this phone")
     SectionTitle("Watch")
     Card {
-        ToggleRow("Mirror notifications", "Android alerts on your wrist · ANCS", settings.watchNotifications, Icons.Rounded.Notifications, InaColors.Elevated) { on ->
+        ToggleRow("Mirror notifications", if (BuildConfig.DEBUG) "Android alerts on your wrist · ANCS" else "Android alerts on your wrist", settings.watchNotifications, Icons.Rounded.Notifications, InaColors.Elevated) { on ->
             store.update { it.copy(watchNotifications = on) }
         }
-        SettingRow("Heart rate", "Standard GATT 0x180D", if (s.heartRate >= 0) "${s.heartRate} BPM" else "--", Icons.Rounded.Favorite, InaColors.Elevated)
+        SettingRow("Heart rate", devOnly("Standard GATT 0x180D") ?: "While your Watch shares it", if (s.heartRate >= 0) "${s.heartRate} BPM" else "--", Icons.Rounded.Favorite, InaColors.Elevated)
     }
     Hint("Heart rate and battery appear while your Watch broadcasts heart rate (for example during a workout with a broadcasting app).")
 }

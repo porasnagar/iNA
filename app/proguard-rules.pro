@@ -3,5 +3,6 @@
 -keepclassmembers class android.bluetooth.BluetoothA2dp { *** connect(android.bluetooth.BluetoothDevice); }
 -keepclassmembers class android.bluetooth.BluetoothHeadset { *** connect(android.bluetooth.BluetoothDevice); }
 
-# Keep the embedded product art table.
--keep class dev.ibridge.android.EmbeddedProductArt { *; }
+
+-keepclassmembers class android.bluetooth.BluetoothDevice { *** createInsecureL2capSocket(int); *** isConnected(); }
+-keep class org.lsposed.hiddenapibypass.** { *; }
