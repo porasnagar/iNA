@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { BuildGuide } from "@/components/ina/site/DeveloperCenter";
 import { Button } from "@/components/ui/button";
-import { buildProjectZip, downloadBlob, EMBEDDED_ART_FILE, generateEmbeddedArtKotlin, SOURCE_FILES, type SourceFile } from "@/lib/android-source";
+import { buildProjectZip, downloadBlob, SOURCE_FILES, type SourceFile } from "@/lib/android-source";
 import { highlight } from "@/lib/highlight";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,6 @@ function SourcePage() {
   const [selectedPath, setSelectedPath] = useState(SOURCE_FILES[0]?.path ?? "");
   const [copied, setCopied] = useState(false);
   const [zipping, setZipping] = useState(false);
-  const [busyFile, setBusyFile] = useState(false);
   const file = SOURCE_FILES.find((f) => f.path === selectedPath) ?? SOURCE_FILES[0];
   const primary = SOURCE_FILES.filter((f) => f.primary);
   const others = SOURCE_FILES.filter((f) => !f.primary);
@@ -50,16 +49,8 @@ function SourcePage() {
     window.setTimeout(() => setCopied(false), 1600);
   };
 
-  const downloadFile = async () => {
-    setBusyFile(true);
-    try {
-      const content = file.name === EMBEDDED_ART_FILE ? await generateEmbeddedArtKotlin() : file.content;
-      downloadBlob(new Blob([content], { type: "text/plain;charset=utf-8" }), file.name);
-    } catch {
-      toast.error("Couldn't prepare that file. Please try again.");
-    } finally {
-      setBusyFile(false);
-    }
+  const downloadFile = () => {
+    downloadBlob(new Blob([file.content], { type: "text/plain;charset=utf-8" }), file.name);
   };
 
   const downloadZip = async () => {
@@ -166,17 +157,12 @@ function SourcePage() {
                 {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                 {copied ? "Copied" : "Copy"}
               </Button>
-              <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => void downloadFile()} disabled={busyFile}>
-                {busyFile ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              <Button variant="secondary" size="sm" className="rounded-xl" onClick={downloadFile}>
+                <Download className="size-4" />
                 Download
               </Button>
             </div>
           </div>
-          {file.name === EMBEDDED_ART_FILE && (
-            <p className="border-b border-border bg-primary/10 px-4 py-2 text-xs text-muted-foreground">
-              Shown as a stub here. Downloading this file or the project fills it with the Base64 product renders.
-            </p>
-          )}
           <div className="flex max-h-[75vh] overflow-auto">
             <pre aria-hidden className="sticky left-0 select-none border-r border-border bg-card px-3 py-4 text-right font-mono text-[12px] leading-[1.6] text-muted-foreground/50">
               {Array.from({ length: lineCount }, (_, i) => i + 1).join("\n")}
