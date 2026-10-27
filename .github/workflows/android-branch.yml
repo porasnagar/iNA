@@ -27,24 +27,43 @@ jobs:
     outputs:
       sha: ${{ steps.publish.outputs.sha }}
     steps:
+      # GitHub never lets the built-in token create or change workflow files, so by default the
+      # android branch is published without src/android/.github. Add an INA_SYNC_TOKEN secret
+      # (a token with the "workflow" scope) to also publish the android branch's own workflow.
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.INA_SYNC_TOKEN || github.token }}
 
       # One commit on `android` per website change; no force pushes, no history rewrites.
       - id: publish
+        env:
+          HAS_SYNC_TOKEN: ${{ secrets.INA_SYNC_TOKEN != '' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          tree=$(git rev-parse HEAD:src/android)
+          parent=""
           parent_args=()
           if git fetch --depth=1 origin android 2>/dev/null; then
             parent=$(git rev-parse FETCH_HEAD)
-            if [ "$(git rev-parse "$parent^{tree}")" = "$tree" ]; then
-              echo "android branch already matches src/android"
-              echo "sha=$parent" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
             parent_args=(-p "$parent")
+          fi
+
+          entries=$(git ls-tree HEAD:src/android)
+          if [ "$HAS_SYNC_TOKEN" != "true" ]; then
+            # Leave workflow files exactly as they already are on the android branch (or absent).
+            entries=$(printf '%s\n' "$entries" | awk -F'\t' '$2 != ".github"')
+            if [ -n "$parent" ]; then
+              existing=$(git ls-tree "$parent" -- .github)
+              if [ -n "$existing" ]; then entries="$entries"$'\n'"$existing"; fi
+            fi
+          fi
+          tree=$(printf '%s\n' "$entries" | git mktree)
+
+          if [ -n "$parent" ] && [ "$(git rev-parse "$parent^{tree}")" = "$tree" ]; then
+            echo "android branch already matches src/android"
+            echo "sha=$parent" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           msg="Sync from ${GITHUB_REF_NAME}@${GITHUB_SHA::7}: $(git log -1 --format=%s)"
           sha=$(git commit-tree "$tree" "${parent_args[@]}" -m "$msg")
