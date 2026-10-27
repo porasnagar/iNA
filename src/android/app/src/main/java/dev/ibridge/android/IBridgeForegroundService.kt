@@ -21,6 +21,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -50,7 +51,6 @@ class IBridgeForegroundService : LifecycleService() {
     private val controller by lazy { InaGraph.controller(this) }
     private lateinit var overlay: CaseOverlayWindow
     private var scanning = false
-    private var lastLidCounter = -1
 
     override fun onCreate() {
         super.onCreate()
@@ -146,16 +146,22 @@ class IBridgeForegroundService : LifecycleService() {
     private fun handleAdvertisement(result: ScanResult) {
         val data = result.scanRecord?.getManufacturerSpecificData(AppleProtocolSpec.APPLE_COMPANY_ID) ?: return
         val packet = ProximityPacketParser.parse(data, result.rssi) ?: return
-        val previous = lastLidCounter
+        val current = IBridgeStateStore.state.value
+        // While your AirPods are connected, other people's AirPods nearby are ignored.
+        if (current.connected && !current.isPreview && current.modelId >= 0 && packet.modelId != current.modelId) return
         IBridgeStateStore.mergeAdvertisement(packet)
-        if (!ProximityPacketParser.shouldTriggerPopup(previous, packet)) return
-        lastLidCounter = packet.lidOpenCounter
-        val merged = IBridgeStateStore.state.value
-        showCaseOpenPopup(merged)
+        val now = SystemClock.elapsedRealtime()
+        if (!CasePopupGate.isNewCaseOpen(packet, now)) return
+        showCaseOpenPopup(IBridgeStateStore.state.value, now)
     }
 
-    /** Foreground → inline sheet. Background → WindowManager overlay, falling back to an Activity. */
-    private fun showCaseOpenPopup(state: AirPodsState) {
+    /**
+     * Foreground → inline sheet. Background → WindowManager overlay, falling back to an Activity.
+     * [CasePopupGate] makes sure only one shows at a time and a closed pop-up stays closed.
+     */
+    private fun showCaseOpenPopup(state: AirPodsState, now: Long) {
+        if (state.isPreview) return
+        if (!CasePopupGate.tryOpen(state.modelId, now)) return
         when {
             IBridgeStateStore.appInForeground -> IBridgeStateStore.emitPopup(state)
             Settings.canDrawOverlays(this) -> overlay.show(state)
@@ -174,9 +180,13 @@ class IBridgeForegroundService : LifecycleService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setTimeoutAfter(20_000)
             .setContentIntent(PendingIntent.getActivity(this, 2, CasePopupOverlayActivity.popupIntent(this), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             .build()
         notifications.notify(POPUP_NOTIFICATION_ID, n)
+        // A notification can't report a swipe-away here, so treat it as seen and snooze briefly.
+        CasePopupGate.onHidden(state.modelId, SystemClock.elapsedRealtime(), ignored = true)
     }
 
     /* ---------- Classic ACL events ---------- */
@@ -184,15 +194,17 @@ class IBridgeForegroundService : LifecycleService() {
     private val aclReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
-            if (!device.isAppleAudio()) return
+            if (!BluetoothLink.isAppleAudio(device)) return
             when (intent.action) {
                 BluetoothDevice.ACTION_ACL_CONNECTED -> lifecycleScope.launch {
+                    if (IBridgeStateStore.state.value.isPreview) IBridgeStateStore.reset()
                     controller.connect(device)
-                    showCaseOpenPopup(IBridgeStateStore.state.value)
+                    notifications.cancel(POPUP_NOTIFICATION_ID)
+                    showCaseOpenPopup(IBridgeStateStore.state.value, SystemClock.elapsedRealtime())
                 }
                 BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
-                    controller.disconnect()
-                    lastLidCounter = -1
+                    val current = IBridgeStateStore.state.value
+                    if (current.deviceAddress == null || current.deviceAddress == device.address) controller.disconnect()
                 }
             }
         }
@@ -204,11 +216,6 @@ class IBridgeForegroundService : LifecycleService() {
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
         ContextCompat.registerReceiver(this, aclReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
-    }
-
-    private fun BluetoothDevice.isAppleAudio(): Boolean {
-        val n = runCatching { name }.getOrNull()?.lowercase().orEmpty()
-        return "airpods" in n || "beats" in n || "powerbeats" in n
     }
 
     /* ---------- Live status notification ---------- */
@@ -255,7 +262,7 @@ class IBridgeForegroundService : LifecycleService() {
         builder
             .setContentTitle(s.model?.name ?: getString(R.string.popup_unknown_accessory))
             .setContentText("$line · ${s.listeningMode.label}")
-            .setSubText(s.linkTier.label)
+            .setSubText(s.linkTier.display)
         val modes = s.model?.caps?.supportedModes.orEmpty().filter { it != ListeningMode.OFF }
         modes.forEachIndexed { i, m -> builder.addAction(modeAction(m, 10 + i)) }
         return builder.build()
