@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Push to porasnagar/iNA
         env:
@@ -27,6 +28,9 @@ jobs:
             echo "::error::Missing INA_SYNC_TOKEN secret! Please add INA_SYNC_TOKEN (Personal Access Token with 'repo' scope) to Settings -> Secrets and variables -> Actions in porasnagar/apple-device-orbit."
             exit 1
           fi
+
+          # Unset any extraheader injected by actions/checkout
+          git config --local --unset-all "http.https://github.com/.extraheader" 2>/dev/null || true
 
           git config user.name "porasnagar"
           git config user.email "86702426+porasnagar@users.noreply.github.com"
