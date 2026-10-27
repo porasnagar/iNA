@@ -8,7 +8,7 @@ export function ScreenHeader({ title, subtitle, right }: { title: string; subtit
   return (
     <div className="flex items-end justify-between gap-3 px-5 pb-3 pt-4">
       <div className="min-w-0">
-        <h1 className="truncate text-[30px] font-bold leading-tight tracking-tight">{title}</h1>
+        <h3 className="truncate text-[30px] font-bold leading-tight tracking-tight">{title}</h3>
         {subtitle && <div className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</div>}
       </div>
       {right && <div className="shrink-0">{right}</div>}
@@ -19,7 +19,7 @@ export function ScreenHeader({ title, subtitle, right }: { title: string; subtit
 export function Group({ title, footer, children, className }: { title?: string; footer?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={cn("px-4", className)}>
-      {title && <h2 className="mb-1.5 px-3 text-[12px] font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>}
+      {title && <h4 className="mb-1.5 px-3 text-[12px] font-medium uppercase tracking-wide text-muted-foreground">{title}</h4>}
       <div className="divide-y divide-border overflow-hidden rounded-[20px] bg-card">{children}</div>
       {footer && <p className="mt-1.5 px-3 text-[11.5px] leading-snug text-muted-foreground">{footer}</p>}
     </section>

@@ -36,7 +36,7 @@ function LearnMore() {
 
   return (
     <section className="px-4 pb-6">
-      <h2 className="px-1 text-[22px] font-bold tracking-tight">Learn More</h2>
+      <h4 className="px-1 text-[22px] font-bold tracking-tight">Learn More</h4>
       <Segmented
         className="mt-3"
         value={tab}
