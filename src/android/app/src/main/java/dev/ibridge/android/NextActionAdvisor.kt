@@ -1,5 +1,6 @@
 package dev.ibridge.android
 
+import android.content.Context
 import android.media.AudioManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,10 +25,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class SuggestionId { LOW_BATTERY, RESUME, FIT_TEST, TURN_ON_ANC, TRY_ADAPTIVE, CONVERSATION_AWARENESS, START_LISTENING }
 
@@ -51,8 +56,18 @@ object NextActionAdvisor {
     /** A bud at or below this level (and not charging) counts as low. */
     const val LOW_BATTERY_THRESHOLD = 20
 
-    fun suggest(state: AirPodsState, fitTested: Boolean, playing: Boolean, dismissed: Set<SuggestionId>): Suggestion? {
-        val caps = state.model?.caps ?: return null
+    /** Low battery and Music paused are alerts: they come back the next time it happens. */
+    val ALERTS = setOf(SuggestionId.LOW_BATTERY, SuggestionId.RESUME)
+
+    /** The suggestion to show now, honouring what the user closed. */
+    fun suggest(state: AirPodsState, fitTested: Boolean, playing: Boolean, memory: SuggestionMemory = SuggestionMemory(), now: Long = 0L): Suggestion? {
+        val quiet = now < memory.quietUntil
+        return candidates(state, fitTested, playing).firstOrNull { it.id !in memory.closed && (!quiet || it.id in ALERTS) }
+    }
+
+    /** Every suggestion that applies right now, most important first. */
+    fun candidates(state: AirPodsState, fitTested: Boolean, playing: Boolean): List<Suggestion> {
+        val caps = state.model?.caps ?: return emptyList()
         val overEar = !caps.hasCase
         val wornBoth = if (overEar) state.leftInEar else state.leftInEar && state.rightInEar
         val wornAny = state.leftInEar || state.rightInEar
@@ -108,7 +123,51 @@ object NextActionAdvisor {
             )
         }
 
-        return out.firstOrNull { it.id !in dismissed }
+        return out
+    }
+}
+
+/**
+ * What the user closed on the suggestion card. A closed tip never comes back, and for a day no
+ * other tip takes its place; closed alerts are forgotten once their condition clears.
+ * Mirrors dismissSuggestion / forgetClearedAlerts in src/lib/ina/suggest.ts.
+ */
+@Immutable
+data class SuggestionMemory(val closed: Set<SuggestionId> = emptySet(), val quietUntil: Long = 0L) {
+    fun dismiss(id: SuggestionId, now: Long) = SuggestionMemory(closed + id, now + QUIET_MS)
+    fun complete(id: SuggestionId) = copy(closed = closed + id)
+    fun forgetCleared(current: Collection<SuggestionId>): SuggestionMemory {
+        val kept = closed.filterTo(mutableSetOf()) { it !in NextActionAdvisor.ALERTS || it in current }
+        return if (kept.size == closed.size) this else copy(closed = kept)
+    }
+
+    companion object {
+        const val QUIET_MS = 24 * 60 * 60_000L
+    }
+}
+
+/** Keeps [SuggestionMemory] across tab switches and app restarts. */
+class SuggestionMemoryStore private constructor(context: Context) {
+    private val prefs = context.getSharedPreferences("ina_suggestions", Context.MODE_PRIVATE)
+    private val _memory = MutableStateFlow(
+        SuggestionMemory(
+            closed = prefs.getStringSet("closed", emptySet()).orEmpty().mapNotNull { n -> SuggestionId.entries.firstOrNull { it.name == n } }.toSet(),
+            quietUntil = prefs.getLong("quiet_until", 0L),
+        ),
+    )
+    val memory: StateFlow<SuggestionMemory> = _memory.asStateFlow()
+
+    fun update(transform: (SuggestionMemory) -> SuggestionMemory) {
+        val next = transform(_memory.value)
+        if (next == _memory.value) return
+        _memory.value = next
+        prefs.edit().putStringSet("closed", next.closed.map { it.name }.toSet()).putLong("quiet_until", next.quietUntil).apply()
+    }
+
+    companion object {
+        @Volatile private var instance: SuggestionMemoryStore? = null
+        fun get(context: Context): SuggestionMemoryStore =
+            instance ?: synchronized(this) { instance ?: SuggestionMemoryStore(context.applicationContext).also { instance = it } }
     }
 }
 
@@ -117,19 +176,19 @@ object NextActionAdvisor {
 fun SuggestedActionCard(state: AirPodsState, actions: InaActions, onOpenControls: () -> Unit) {
     val context = LocalContext.current
     val audio = remember { context.getSystemService(AudioManager::class.java) }
-    var dismissed by rememberSaveable { mutableStateOf(listOf<String>()) }
-    val suggestion = NextActionAdvisor.suggest(
-        state = state,
-        fitTested = state.fitTestResult != null,
-        playing = audio?.isMusicActive == true,
-        dismissed = dismissed.mapNotNull { name -> SuggestionId.entries.firstOrNull { it.name == name } }.toSet(),
-    ) ?: return
+    val store = remember { SuggestionMemoryStore.get(context) }
+    val memory by store.memory.collectAsState()
+    val fitTested = state.fitTestResult != null
+    val playing = audio?.isMusicActive == true
+    val current = NextActionAdvisor.candidates(state, fitTested, playing).map { it.id }
+    LaunchedEffect(current) { store.update { it.forgetCleared(current) } }
+    val suggestion = NextActionAdvisor.suggest(state, fitTested, playing, memory, System.currentTimeMillis()) ?: return
 
     val run: () -> Unit = {
         when (suggestion.id) {
             SuggestionId.LOW_BATTERY -> actions.setMode(ListeningMode.OFF)
             SuggestionId.RESUME, SuggestionId.START_LISTENING -> {
-                dismissed = dismissed + suggestion.id.name
+                store.update { it.complete(suggestion.id) }
                 actions.resumeMedia()
             }
             SuggestionId.FIT_TEST -> onOpenControls()
@@ -166,7 +225,7 @@ fun SuggestedActionCard(state: AirPodsState, actions: InaActions, onOpenControls
             ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
         }
         Box(
-            Modifier.size(28.dp).clip(CircleShape).clickable { dismissed = dismissed + suggestion.id.name },
+            Modifier.size(36.dp).clip(CircleShape).clickable { store.update { it.dismiss(suggestion.id, System.currentTimeMillis()) } },
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Rounded.Close, contentDescription = "Dismiss suggestion", tint = InaColors.TextSecondary, modifier = Modifier.size(14.dp)) }
     }
