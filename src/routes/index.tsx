@@ -1,61 +1,60 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { Phone } from "@/components/ina/phone/Phone";
 import { SimulatorPanel } from "@/components/ina/SimulatorPanel";
+import { Architecture } from "@/components/ina/site/Architecture";
+import { DeveloperCenter } from "@/components/ina/site/DeveloperCenter";
+import { HardwareMatrix } from "@/components/ina/site/HardwareMatrix";
+import { Hero } from "@/components/ina/site/Hero";
+import { SectionHeading } from "@/components/ina/site/SectionHeading";
 import { SimProvider } from "@/lib/ina/store";
+
+const TITLE = "iNA — Universal Apple Hardware Interoperability Suite for Android";
+const DESCRIPTION =
+  "AirPods, Beats, Apple Watch, AirTag and HomePod features on Android 10–16+. 100% user-space: zero root, zero Magisk, zero iOS VM. Try the live simulator.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "iNA Prototype — AirPods pop-up & controls on Android" },
-      {
-        name: "description",
-        content:
-          "Interactive iNA prototype: case-open pop-up, Quick Settings noise control, live status, onboarding and AirPods feature controls on Android.",
-      },
-      { property: "og:title", content: "iNA Prototype — AirPods pop-up & controls on Android" },
-      {
-        property: "og:description",
-        content: "Try the case-open pop-up, noise control tile, live status and AirPods controls iNA brings to Android 10–16+.",
-      },
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://apple-device-orbit.lovable.app/" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://apple-device-orbit.lovable.app/" }],
   }),
   component: Index,
 });
 
 function Index() {
   return (
-    <SimProvider>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-        <div className="mb-8 flex flex-col gap-4 lg:mb-10 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium text-primary">Interactive prototype · Android 10–16+</p>
-            <h1 className="mt-2 text-balance text-4xl font-bold tracking-tight sm:text-5xl">
-              iPhone-grade AirPods features, on any Android phone.
-            </h1>
-            <p className="mt-3 text-pretty text-muted-foreground">
-              Open the case to see the pop-up, pull down Quick Settings to cycle noise control, and explore every control iNA unlocks — no root required.
-            </p>
-          </div>
-          <Link
-            to="/source"
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-elevated lg:self-auto"
-          >
-            Get the Android source <ArrowRight className="size-4" />
-          </Link>
-        </div>
+    <main>
+      <Hero />
 
-        <div className="grid items-start gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-12">
-          <div className="lg:sticky lg:top-20">
-            <Phone />
-            <p className="mt-4 text-center text-xs text-muted-foreground">Tap the status bar for Quick Settings · tap the gesture bar for Home</p>
-          </div>
-          <SimulatorPanel />
+      <section id="simulator" className="scroll-mt-16 border-t border-border bg-stage">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+          <SectionHeading eyebrow="Live app simulator" title="Try iNA before you install it." className="mb-12">
+            A full Android 16 handset running iNA. Open the case to see the pop-up, pull down Quick Settings to cycle noise control, and explore every
+            control iNA unlocks.
+          </SectionHeading>
+          <SimProvider>
+            <div className="grid items-start gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-12">
+              <div className="lg:sticky lg:top-20">
+                <Phone />
+                <p className="mt-4 text-center text-xs text-muted-foreground">Tap the status bar for Quick Settings · tap the gesture bar for Home</p>
+              </div>
+              <SimulatorPanel />
+            </div>
+          </SimProvider>
         </div>
-      </main>
-    </SimProvider>
+      </section>
+
+      <Architecture />
+      <HardwareMatrix />
+      <DeveloperCenter />
+    </main>
   );
 }
