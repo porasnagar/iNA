@@ -1,6 +1,8 @@
 import { Bluetooth, ChevronDown, Cpu, Radio, RefreshCw, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
+import { OtherDeviceScreen, OtherDevicesList, type OtherDeviceKind } from "./OtherDeviceScreen";
+
 import { BatteryRing } from "@/components/ina/BatteryRing";
 import { ProductImage } from "@/components/ina/product";
 import { Button } from "@/components/ui/button";
@@ -151,6 +153,8 @@ function HowCard({
 
 export function ConnectScreen() {
   const { actions } = useSim();
+  const [other, setOther] = useState<OtherDeviceKind | null>(null);
+  if (other) return <OtherDeviceScreen kind={other} onClose={() => setOther(null)} />;
   return (
     <div className="space-y-5 pb-4">
       <ScreenHeader title="Connect a Device" subtitle="Bring your Apple accessory close to this phone." />
@@ -183,7 +187,7 @@ export function ConnectScreen() {
       <ol className="mx-4 space-y-2">
         {["Open the case lid next to your phone", "Tap Connect on the pop-up", "Done — controls unlock here"].map((t, i) => (
           <li key={t} className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3">
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{i + 1}</span>
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-elevated text-xs font-semibold">{i + 1}</span>
             <span className="min-w-0 text-[14px]">{t}</span>
           </li>
         ))}
@@ -195,6 +199,8 @@ export function ConnectScreen() {
         </Button>
         <PreviewToggleCard />
       </div>
+
+      <OtherDevicesList onPick={setOther} />
 
       <LearnMore />
     </div>

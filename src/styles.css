@@ -100,19 +100,16 @@
   --bezel: oklch(0.07 0 0);
   --scrim: oklch(0 0 0 / 0.45);
 
-  --tint-blue: oklch(0.63 0.2 255);
-  --tint-green: oklch(0.72 0.19 148);
-  --tint-orange: oklch(0.72 0.18 55);
-  --tint-pink: oklch(0.66 0.23 10);
-  --tint-purple: oklch(0.6 0.2 300);
-  --tint-teal: oklch(0.75 0.12 200);
-  --tint-yellow: oklch(0.86 0.16 95);
+  --tint-blue: oklch(0.32 0.004 270);
+  --tint-green: oklch(0.32 0.004 270);
+  --tint-orange: oklch(0.32 0.004 270);
+  --tint-pink: oklch(0.32 0.004 270);
+  --tint-purple: oklch(0.32 0.004 270);
+  --tint-teal: oklch(0.32 0.004 270);
+  --tint-yellow: oklch(0.32 0.004 270);
 
-  --wallpaper: radial-gradient(120% 70% at 20% 0%, oklch(0.42 0.14 265) 0%, transparent 60%),
-    radial-gradient(90% 60% at 100% 40%, oklch(0.4 0.16 320) 0%, transparent 60%),
-    radial-gradient(100% 70% at 10% 100%, oklch(0.36 0.12 200) 0%, transparent 65%),
-    oklch(0.14 0.02 270);
-  --gradient-logo: linear-gradient(145deg, oklch(0.72 0.17 240), oklch(0.55 0.22 275) 55%, oklch(0.48 0.2 300));
+  --wallpaper: radial-gradient(120% 70% at 30% 0%, oklch(0.32 0.01 260) 0%, transparent 65%), oklch(0.12 0.003 270);
+  --gradient-logo: linear-gradient(160deg, oklch(1 0 0 / 0.22), oklch(1 0 0 / 0.06));
   --gradient-stage: radial-gradient(60% 50% at 50% 40%, oklch(0.3 0.04 260 / 0.6), transparent 70%);
   --shadow-phone: 0 40px 80px -20px oklch(0 0 0 / 0.7), 0 0 0 1px oklch(1 0 0 / 0.08);
   --shadow-sheet: 0 -10px 40px -10px oklch(0 0 0 / 0.6);
@@ -164,6 +161,11 @@
 }
 @utility shadow-sheet {
   box-shadow: var(--shadow-sheet);
+}
+@utility glass {
+  background: var(--sheet);
+  backdrop-filter: blur(28px) saturate(1.4);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12);
 }
 @utility scrollbar-none {
   scrollbar-width: none;

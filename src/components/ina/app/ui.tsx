@@ -29,7 +29,7 @@ export function Group({ title, footer, children, className }: { title?: string; 
 function RowIcon({ icon: I, tint }: { icon?: LucideIcon | undefined; tint?: string | undefined }) {
   if (!I) return null;
   return (
-    <span className={cn("grid size-7 shrink-0 place-items-center rounded-[8px] text-primary-foreground", tint ?? "bg-primary")}>
+    <span className={cn("grid size-7 shrink-0 place-items-center rounded-[8px] bg-elevated text-foreground")}>
       <I className="size-4" />
     </span>
   );
@@ -91,7 +91,7 @@ export function ToggleRow({
         <span className="block truncate text-[15px]">{title}</span>
         {detail && <span className="block truncate text-[11.5px] text-muted-foreground">{detail}</span>}
       </span>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} className="shrink-0 data-[state=checked]:bg-success" />
+      <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} className="shrink-0 data-[state=checked]:bg-primary" />
     </label>
   );
 }

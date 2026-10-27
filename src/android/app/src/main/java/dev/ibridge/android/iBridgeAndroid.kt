@@ -918,9 +918,9 @@ object InaColors {
     val TextPrimary = Color(0xFFF5F5F7)
     val TextSecondary = Color(0xFF9A9AA2)
     val Hairline = Color(0x17FFFFFF)
-    val Purple = Color(0xFFBF5AF2)
-    val Teal = Color(0xFF40C8E0)
-    val Orange = Color(0xFFFF9F0A)
+    val Purple = Color(0xFF3A3A3F)
+    val Teal = Color(0xFF3A3A3F)
+    val Orange = Color(0xFF3A3A3F)
 }
 
 @Composable
