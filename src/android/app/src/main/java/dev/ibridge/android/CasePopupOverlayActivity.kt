@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -89,8 +90,8 @@ class CasePopupOverlayActivity : ComponentActivity() {
                     }
                     Unit
                 }
-                if (autoPair && stage == PopupStage.INFO_UNPAIRED && step == 0) {
-                    androidx.compose.runtime.LaunchedEffect(Unit) { startPairing() }
+                LaunchedEffect(Unit) {
+                    if (autoPair && stage == PopupStage.INFO_UNPAIRED) startPairing()
                 }
                 Box(
                     Modifier
@@ -128,8 +129,12 @@ class CasePopupOverlayActivity : ComponentActivity() {
             }
             override fun onFailure(error: CharSequence?) { deferred.complete(null) }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) cdm.associate(request, mainExecutor, callback)
-        else @Suppress("DEPRECATION") cdm.associate(request, callback, null)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            cdm.associate(request, mainExecutor, callback)
+        } else {
+            @Suppress("DEPRECATION")
+            cdm.associate(request, callback, null)
+        }
         return withTimeoutOrNull(60_000) { deferred.await() }
     }
 
