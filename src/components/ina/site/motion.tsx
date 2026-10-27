@@ -48,13 +48,9 @@ export function Stagger({ as = "ul", className, children, ...rest }: { as?: "ul"
 /** A card inside <Stagger>: springs in, lifts on hover, presses down on tap. */
 export function StaggerItem({ as = "li", className, children, interactive = true }: { as?: "li" | "div"; className?: string; children: ReactNode; interactive?: boolean }) {
   const Comp = as === "li" ? motion.li : motion.div;
+  const gestures = interactive ? { whileHover: { y: -5, transition: SPRING }, whileTap: { scale: 0.98, transition: SPRING } } : {};
   return (
-    <Comp
-      className={cn("transform-gpu", className)}
-      variants={reveal}
-      whileHover={interactive ? { y: -5, transition: SPRING } : undefined}
-      whileTap={interactive ? { scale: 0.98, transition: SPRING } : undefined}
-    >
+    <Comp className={cn("transform-gpu", className)} variants={reveal} {...gestures}>
       {children}
     </Comp>
   );
