@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
                 IntentCompat.getParcelableExtra(it, CompanionDeviceManager.EXTRA_DEVICE, android.bluetooth.BluetoothDevice::class.java)
             }
             if (device != null) lifecycleScope.launch {
-                @SuppressLint("MissingPermission")
                 if (device.bondState != android.bluetooth.BluetoothDevice.BOND_BONDED) device.createBond()
                 InaGraph.controller(this@MainActivity).connect(device)
             }
