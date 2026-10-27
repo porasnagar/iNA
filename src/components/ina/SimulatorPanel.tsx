@@ -108,7 +108,7 @@ export function SimulatorPanel() {
           </Button>
         </div>
         <div className="mt-3 space-y-2">
-          <SwitchField id="sim-preview" label="Preview Connected UI" checked={state.previewConnected} onChange={actions.setPreviewConnected} />
+          <SwitchField id="sim-preview" label="Preview Connected UI (debug build only)" checked={state.previewConnected} onChange={actions.setPreviewConnected} />
           <SwitchField id="sim-overlay" label="Overlay permission granted" checked={state.permissions.overlay} onChange={(v) => actions.setPermission("overlay", v)} />
         </div>
       </Panel>
