@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -77,8 +78,17 @@ class CasePopupOverlayActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val autoPair = intent.getBooleanExtra(EXTRA_START_PAIRING, false)
+        // Liquid Glass: blur the Home Screen / app behind the sheet on Android 12+.
+        val reduceTransparency = InaGraph.settings(this).settings.value.reduceTransparency
+        val blurred = LiquidGlass.applyBlurBehind(window, reduceTransparency)
+        val scrim = when {
+            blurred -> 0.25f
+            reduceTransparency -> 0.62f
+            else -> 0.45f
+        }
         setContent {
             InaTheme {
+              CompositionLocalProvider(LocalGlass provides LocalGlass.current.copy(backdropBlurred = blurred)) {
                 val state by IBridgeStateStore.state.collectAsStateWithLifecycle()
                 var stage by remember { mutableStateOf(if (state.isPaired || state.connected) PopupStage.INFO_PAIRED else PopupStage.INFO_UNPAIRED) }
                 var step by remember { mutableIntStateOf(0) }
@@ -96,7 +106,7 @@ class CasePopupOverlayActivity : ComponentActivity() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(Color.Black.copy(alpha = scrim))
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { finish() },
                     contentAlignment = Alignment.BottomCenter,
                 ) {
@@ -109,6 +119,7 @@ class CasePopupOverlayActivity : ComponentActivity() {
                         modifier = Modifier.navigationBarsPadding().padding(8.dp),
                     )
                 }
+              }
             }
         }
     }
