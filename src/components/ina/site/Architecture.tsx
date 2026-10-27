@@ -67,9 +67,9 @@ export function Architecture() {
                 <span className="font-mono text-sm text-muted-foreground">{l.n}</span>
               </div>
               <h3 className="mt-6 text-2xl font-semibold tracking-tight">
-                {l.title} <span className="sr-only">— {l.tag}</span>
+                {l.title}
               </h3>
-              <p aria-hidden className="mt-1 font-mono text-xs text-primary">{l.tag}</p>
+              <p className="mt-1 font-mono text-xs text-primary">{l.tag}</p>
               <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{l.body}</p>
               <ul className="mt-5 space-y-2 border-t border-border pt-5 text-sm">
                 {l.points.map((p) => (
@@ -89,14 +89,17 @@ export function Architecture() {
             <h2 id="packet" className="text-2xl font-semibold tracking-tight">Anatomy of a 0x07 Proximity Pairing packet</h2>
             <span className="font-mono text-xs text-muted-foreground">manufacturer data · 0x004C</span>
           </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {PACKET_LAYOUT.map((row) => (
               <div key={row.byte} className="flex gap-3 rounded-2xl bg-foreground/5 p-3">
-                <span className="grid h-8 min-w-12 shrink-0 place-items-center rounded-lg bg-background px-2 font-mono text-xs text-primary">{row.byte}</span>
-                <span className="text-sm leading-snug text-muted-foreground">{row.meaning}</span>
+                <dt className="grid h-8 min-w-12 shrink-0 place-items-center rounded-lg bg-background px-2 font-mono text-xs text-primary">
+                  <span className="sr-only">Byte </span>
+                  {row.byte}
+                </dt>
+                <dd className="text-sm leading-snug text-muted-foreground">{row.meaning}</dd>
               </div>
             ))}
-          </div>
+          </dl>
       </section>
     </div>
   );
