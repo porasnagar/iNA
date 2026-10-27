@@ -210,7 +210,7 @@ fun SuggestedActionCard(state: AirPodsState, actions: InaActions, onOpenControls
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(suggestion.title, color = InaColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(suggestion.title, color = InaColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(suggestion.detail, color = InaColors.TextSecondary, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         suggestion.cta?.let { label ->

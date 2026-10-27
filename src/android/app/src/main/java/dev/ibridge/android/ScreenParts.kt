@@ -54,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -91,6 +92,8 @@ fun FloatingTabBar(items: List<Pair<String, ImageVector>>, selected: Int, onSele
             .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
             .fillMaxWidth()
             .shadow(18.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
+            // Nothing blurs what scrolls underneath, so keep the bar near-solid for legibility.
+            .background(InaColors.Card.copy(alpha = 0.92f), shape)
             .liquidGlass(shape, glass.reduceTransparency, backdropBlurred = false)
             .padding(vertical = 6.dp),
     ) {
@@ -119,11 +122,11 @@ fun BoxScope.RadarRings() {
     val t = rememberInfiniteTransition(label = "radar")
     val phase by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing), RepeatMode.Restart), label = "radarPhase")
     val color = InaColors.Primary
-    Canvas(Modifier.matchParentSize()) {
+    Canvas(Modifier.matchParentSize().clipToBounds()) {
         val base = size.minDimension * 0.36f
         for (i in 0 until 3) {
             val p = (phase + i / 3f) % 1f
-            drawCircle(color.copy(alpha = 0.4f * (1f - p)), radius = base * (0.7f + p * 0.9f), style = Stroke(width = 1.dp.toPx()))
+            drawCircle(color.copy(alpha = 0.4f * (1f - p)), radius = base * (0.6f + p * 0.75f), style = Stroke(width = 1.dp.toPx()))
         }
     }
 }
