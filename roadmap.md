@@ -11,3 +11,4 @@
 - [x] Product-site home: hero, live simulator, architecture, hardware matrix, developer center
 - [x] Restore original Apple dark palette (blue accent) on site + phone; chameleon green only in brand art
 - [x] Green brand accents on website; phone simulator + Kotlin app stay original Apple dark
+- [ ] Multi-page site: /, /simulator, /architecture, /hardware, /source with own SEO + sitemap.xml/robots.txt
