@@ -26,3 +26,7 @@
 - [x] Case-open pop-up stays closed after closing it (no repeats)
 - [x] Preview Connected UI and developer tools only in the debug build; release stays minimal
 - [x] Light mode (Automatic / Light / Dark) in the Android app and the simulated phone
+- [x] Closed suggestion cards stay closed (saved), no other tip pops up in their place
+- [x] Case pop-up shows on the Home Screen every time the lid opens; closing keeps it closed until the lid is shut
+- [x] Android screens match the simulator (tab bar, Connect, Learn More, Now Playing, in-ear status)
+- [x] Fix left/right battery swap from the AirPods broadcast
