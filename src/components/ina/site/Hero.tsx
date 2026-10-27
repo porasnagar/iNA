@@ -45,7 +45,7 @@ export function Hero() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="h-12 rounded-full px-6 text-[15px] font-semibold">
-                <Link to="/" hash="simulator">
+                <Link to="/simulator">
                   Try Live Simulator <ArrowRight />
                 </Link>
               </Button>
