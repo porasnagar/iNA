@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ina.porasnagar.dev/sitemap.xml
+Sitemap: https://apple-device-orbit.lovable.app/sitemap.xml

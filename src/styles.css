@@ -58,6 +58,15 @@
   --color-tint-purple: var(--tint-purple);
   --color-tint-teal: var(--tint-teal);
   --color-tint-yellow: var(--tint-yellow);
+  --color-activity-move: var(--activity-move);
+  --color-activity-exercise: var(--activity-exercise);
+  --color-activity-stand: var(--activity-stand);
+  --color-viewfinder: var(--viewfinder);
+  --color-viewfinder-foreground: var(--viewfinder-foreground);
+  --color-sleep-awake: var(--sleep-awake);
+  --color-sleep-rem: var(--sleep-rem);
+  --color-sleep-core: var(--sleep-core);
+  --color-sleep-deep: var(--sleep-deep);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -140,6 +149,16 @@
   --chart-3: oklch(0.8 0.17 70);
   --chart-4: oklch(0.6 0.2 300);
   --chart-5: oklch(0.66 0.22 25);
+  /* Apple Watch: Activity ring colours, camera viewfinder (always dark), sleep stages. */
+  --activity-move: oklch(0.65 0.25 15);
+  --activity-exercise: oklch(0.87 0.23 135);
+  --activity-stand: oklch(0.85 0.14 205);
+  --viewfinder: oklch(0.13 0.004 270);
+  --viewfinder-foreground: oklch(0.97 0 0);
+  --sleep-awake: oklch(0.75 0.15 40);
+  --sleep-rem: oklch(0.78 0.11 230);
+  --sleep-core: oklch(0.6 0.17 258);
+  --sleep-deep: oklch(0.45 0.18 275);
   --sidebar: oklch(0.17 0.004 270);
   --sidebar-foreground: oklch(0.975 0 0);
   --sidebar-primary: oklch(0.63 0.2 255);

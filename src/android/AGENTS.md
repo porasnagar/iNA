@@ -9,3 +9,4 @@
 - Android windows request the panel's fastest refresh rate via `HighRefreshRate.apply(...)` (activities and the WindowManager overlay); apply it to any new window.
 - Android releases are driven by tags: a new `versionName` in `app/build.gradle.kts` makes CI tag `v<versionName>` and publish a GitHub Release; bump it to ship.
 - Android screens mirror the simulator layout (floating glass tab bar, Connect radar + steps, Learn More tabs, Now Playing, in-ear row); simulator-matching parts live in `ScreenParts.kt`, and scrolling screens end with `TAB_BAR_CLEARANCE` padding.
+- Device set-up flows and connected screens for Watch / AirTag / HomePod live in `DeviceFlows.kt`; data colours (Activity rings, sleep stages, camera viewfinder) come only from `DeviceArtColors`.

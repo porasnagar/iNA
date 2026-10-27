@@ -112,9 +112,9 @@ import kotlin.math.roundToInt
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 enum class OtherDeviceKind(val title: String, val detail: String, val art: ProductArtKey, val chip: String, val icon: ImageVector) {
-    WATCH("Apple Watch", "Notifications, heart rate and media", ProductArtKey.APPLE_WATCH, "GATT · ANCS", Icons.Rounded.Watch),
-    AIRTAG("AirTag", "Find, ring and track distance", ProductArtKey.AIRTAG, "0x12 · Find My", Icons.Rounded.MyLocation),
-    HOMEPOD("HomePod", "Discover, play and volume", ProductArtKey.HOMEPOD, "mDNS · AirPlay", Icons.Rounded.Speaker),
+    WATCH("Apple Watch", "Pair, Activity rings and Health", ProductArtKey.APPLE_WATCH, "GATT · ANCS", Icons.Rounded.Watch),
+    AIRTAG("AirTag", "Register, find and ring", ProductArtKey.AIRTAG, "0x12 · Find My", Icons.Rounded.MyLocation),
+    HOMEPOD("HomePod", "Set up, AirPlay and stereo pair", ProductArtKey.HOMEPOD, "mDNS · AirPlay", Icons.Rounded.Speaker),
 }
 
 private const val PERMISSION_HINT = "Allow Nearby devices in Settings › Permissions."
@@ -132,7 +132,19 @@ data class WatchState(
     /** -1 = no reading yet. */
     val heartRate: Int = -1,
     val error: String? = null,
+    /** Watches heard while choosing one by hand (manual pairing). */
+    val nearby: List<NearbyWatch> = emptyList(),
+    /** GATT services discovered and battery read: "Syncing settings" is done. */
+    val servicesReady: Boolean = false,
+    /** Heart-rate notifications subscribed: "Registering … telemetry" is done. */
+    val telemetryReady: Boolean = false,
+    /** Recent heart-rate readings, newest last. */
+    val samples: List<Int> = emptyList(),
+    val pinging: Boolean = false,
 )
+
+@Immutable
+data class NearbyWatch(val address: String, val name: String, val rssi: Int)
 
 @SuppressLint("MissingPermission")
 class WatchLink(private val context: Context) {
@@ -142,6 +154,7 @@ class WatchLink(private val context: Context) {
     private val adapter: BluetoothAdapter? get() = context.getSystemService(BluetoothManager::class.java)?.adapter
     private val handler = Handler(Looper.getMainLooper())
     private var gatt: BluetoothGatt? = null
+    private var autoConnect = true
 
     private val timeout = Runnable {
         if (!_state.value.connected) {
@@ -153,8 +166,15 @@ class WatchLink(private val context: Context) {
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             if (gatt != null) return
-            stopScan()
-            connect(result.device, result.scanRecord?.deviceName)
+            if (autoConnect) {
+                stopScan()
+                connect(result.device, result.scanRecord?.deviceName)
+                return
+            }
+            handler.removeCallbacks(timeout)
+            val name = result.scanRecord?.deviceName ?: runCatching { result.device.name }.getOrNull() ?: "Apple Watch"
+            val w = NearbyWatch(result.device.address, name, result.rssi)
+            _state.update { s -> s.copy(nearby = (s.nearby.filterNot { it.address == w.address } + w).sortedByDescending { it.rssi }, error = null) }
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -162,7 +182,9 @@ class WatchLink(private val context: Context) {
         }
     }
 
-    fun start() {
+    /** [autoConnect] = connect to the first Watch heard; false = list them for manual pairing. */
+    fun start(autoConnect: Boolean = true) {
+        this.autoConnect = autoConnect
         if (_state.value.scanning || gatt != null) return
         val scanner = adapter?.bluetoothLeScanner ?: run {
             _state.value = WatchState(error = "Turn on Bluetooth to find your Watch.")
@@ -184,6 +206,34 @@ class WatchLink(private val context: Context) {
         runCatching { gatt?.disconnect(); gatt?.close() }
         gatt = null
         _state.value = WatchState()
+    }
+
+    /** Manual pairing: connect to the Watch picked from [WatchState.nearby]. */
+    fun connectTo(address: String) {
+        if (gatt != null) return
+        val device = runCatching { adapter?.getRemoteDevice(address) }.getOrNull() ?: return
+        stopScan()
+        connect(device, _state.value.nearby.firstOrNull { it.address == address }?.name)
+    }
+
+    /**
+     * Ping My Watch: writes "high alert" to the standard Immediate Alert service (0x1802 / 0x2A06).
+     * Only works when the Watch exposes that service; otherwise the user is told so.
+     */
+    fun ping() {
+        val g = gatt
+        if (g == null || !_state.value.connected) {
+            _state.update { it.copy(error = "Connect your Watch first.") }
+            return
+        }
+        val c = g.getService(IMMEDIATE_ALERT_SERVICE)?.getCharacteristic(ALERT_LEVEL)
+        if (c == null) {
+            _state.update { it.copy(error = "Your Watch doesn't accept pings from Android. Use Find My on iCloud.com instead.") }
+            return
+        }
+        _state.update { it.copy(pinging = true, error = null) }
+        writeCharacteristic(g, c, byteArrayOf(0x02), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        handler.postDelayed({ _state.update { it.copy(pinging = false) } }, 2_500)
     }
 
     private fun stopScan() {
@@ -208,15 +258,17 @@ class WatchLink(private val context: Context) {
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     g.close()
                     if (gatt === g) gatt = null
-                    _state.update { it.copy(connected = false, heartRate = -1, battery = -1, error = "Watch disconnected.") }
+                    _state.update { it.copy(connected = false, heartRate = -1, battery = -1, servicesReady = false, telemetryReady = false, error = "Watch disconnected.") }
                 }
             }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+            _state.update { it.copy(servicesReady = true) }
             val hr = g.getService(HEART_RATE_SERVICE)?.getCharacteristic(HEART_RATE_MEASUREMENT)
             val cccd = hr?.getDescriptor(CCCD)
             if (hr == null || cccd == null) {
+                _state.update { it.copy(telemetryReady = true) }
                 readBattery(g)
                 return
             }
@@ -225,7 +277,10 @@ class WatchLink(private val context: Context) {
         }
 
         // GATT is one-operation-at-a-time: read battery only after the CCCD write lands.
-        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) = readBattery(g)
+        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            _state.update { it.copy(telemetryReady = true) }
+            readBattery(g)
+        }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray) = handle(c, value)
 
@@ -250,7 +305,7 @@ class WatchLink(private val context: Context) {
 
     private fun handle(c: BluetoothGattCharacteristic, value: ByteArray) {
         when (c.uuid) {
-            HEART_RATE_MEASUREMENT -> parseHeartRate(value)?.let { bpm -> _state.update { it.copy(heartRate = bpm) } }
+            HEART_RATE_MEASUREMENT -> parseHeartRate(value)?.let { bpm -> _state.update { it.copy(heartRate = bpm, samples = (it.samples + bpm).takeLast(60)) } }
             BATTERY_LEVEL -> value.firstOrNull()?.let { b ->
                 val level = (b.toInt() and 0xFF).takeIf { it in 0..100 } ?: -1
                 _state.update { it.copy(battery = level) }
@@ -264,6 +319,8 @@ class WatchLink(private val context: Context) {
         val BATTERY_SERVICE: UUID = UUID.fromString("0000180F-0000-1000-8000-00805F9B34FB")
         val BATTERY_LEVEL: UUID = UUID.fromString("00002A19-0000-1000-8000-00805F9B34FB")
         val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB")
+        val IMMEDIATE_ALERT_SERVICE: UUID = UUID.fromString("00001802-0000-1000-8000-00805F9B34FB")
+        val ALERT_LEVEL: UUID = UUID.fromString("00002A06-0000-1000-8000-00805F9B34FB")
 
         /** Heart Rate Measurement 0x2A37: flags bit 0 selects UINT8 or UINT16 BPM. */
         fun parseHeartRate(v: ByteArray): Int? {
@@ -291,12 +348,12 @@ private fun writeDescriptor(g: BluetoothGatt, d: BluetoothGattDescriptor, value:
 
 @SuppressLint("MissingPermission")
 @Suppress("DEPRECATION")
-private fun writeCharacteristic(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray) {
+private fun writeCharacteristic(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray, type: Int = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        g.writeCharacteristic(c, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+        g.writeCharacteristic(c, value, type)
     } else {
         c.value = value
-        c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        c.writeType = type
         g.writeCharacteristic(c)
     }
 }
@@ -333,8 +390,6 @@ data class FindMyAdvertisement(val separated: Boolean, val deviceType: Int, val 
     }
 }
 
-enum class FindTrend(val label: String) { STEADY("Hold steady"), CLOSER("Getting closer"), FARTHER("Moving away") }
-
 @Immutable
 data class AirTagState(
     val scanning: Boolean = false,
@@ -345,7 +400,7 @@ data class AirTagState(
     val separated: Boolean = false,
     /** -1 unless the AirTag advertises its battery (separated mode). */
     val battery: Int = -1,
-    val trend: FindTrend = FindTrend.STEADY,
+    val trend: DeviceRules.ProximityTrend = DeviceRules.ProximityTrend.STEADY,
     val ringing: Boolean = false,
     val error: String? = null,
 )
@@ -358,6 +413,7 @@ class AirTagFinder(private val context: Context) {
     private val adapter: BluetoothAdapter? get() = context.getSystemService(BluetoothManager::class.java)?.adapter
     private val handler = Handler(Looper.getMainLooper())
     private var smoothed: Double? = null
+    private var trendAt = 0L
 
     private val notFound = Runnable {
         if (!_state.value.found) _state.update { it.copy(error = "No AirTag nearby yet. Keep this screen open and move closer.") }
@@ -406,15 +462,16 @@ class AirTagFinder(private val context: Context) {
         val previous = smoothed.takeIf { current.address == address }
         val ema = previous?.let { it + 0.25 * (r.rssi - it) } ?: r.rssi.toDouble()
         smoothed = ema
-        val trend = when {
-            previous == null -> FindTrend.STEADY
-            ema > previous + 0.6 -> FindTrend.CLOSER
-            ema < previous - 0.6 -> FindTrend.FARTHER
-            else -> FindTrend.STEADY
-        }
+        val distance = FindMyAdvertisement.distanceMeters(ema)
+        val computed = if (previous == null) DeviceRules.ProximityTrend.STEADY
+        else DeviceRules.proximityTrend(FindMyAdvertisement.distanceMeters(previous), distance)
+        // Keep "Warmer" / "Colder" on screen for a moment instead of flickering back to steady.
+        val now = System.currentTimeMillis()
+        val trend = if (computed == DeviceRules.ProximityTrend.STEADY && now - trendAt < 2_500) current.trend else computed
+        if (computed != DeviceRules.ProximityTrend.STEADY) trendAt = now
         _state.update {
             it.copy(
-                found = true, address = address, rssi = r.rssi, distanceMeters = FindMyAdvertisement.distanceMeters(ema),
+                found = true, address = address, rssi = r.rssi, distanceMeters = distance,
                 separated = ad.separated, battery = ad.batteryPercent, trend = trend, error = null,
             )
         }
@@ -602,14 +659,22 @@ class OtherDeviceHub(context: Context) {
     }
 }
 
-/* ---------- Compose UI — same layout as the connected AirPods screen ---------- */
+/* ---------- Compose UI: list entry + per-device flows (DeviceFlows.kt) ---------- */
 
 @Composable
 fun OtherDevicesList(onPick: (OtherDeviceKind) -> Unit) {
+    val context = LocalContext.current
+    val store = remember { PairedDevicesStore.get(context) }
+    val paired by store.state.collectAsStateWithLifecycle()
     SectionTitle("Other Apple devices")
     Card {
         OtherDeviceKind.entries.forEach { k ->
-            SettingRow(k.title, k.detail, icon = k.icon, tint = InaColors.Elevated, onClick = { onPick(k) }) {
+            val detail = when (k) {
+                OtherDeviceKind.WATCH -> paired.watch?.let { "Paired · ${it.name}" }
+                OtherDeviceKind.AIRTAG -> paired.airTag?.let { "Registered · ${it.emoji} ${it.name}" }
+                OtherDeviceKind.HOMEPOD -> paired.homePod?.let { "Set up · ${it.room}" }
+            } ?: k.detail
+            SettingRow(k.title, detail, icon = k.icon, tint = InaColors.Elevated, onClick = { onPick(k) }) {
                 Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = InaColors.TextSecondary)
             }
         }
@@ -618,187 +683,16 @@ fun OtherDevicesList(onPick: (OtherDeviceKind) -> Unit) {
 
 @Composable
 fun OtherDeviceScreen(kind: OtherDeviceKind, onClose: () -> Unit) {
-    val context = LocalContext.current
-    val hub = remember { InaGraph.otherDevices(context) }
-    DisposableEffect(kind) {
-        hub.start(kind)
-        onDispose { hub.stop(kind) }
-    }
     BackHandler(onBack = onClose)
-
-    val (status, live, name) = when (kind) {
-        OtherDeviceKind.WATCH -> {
-            val s by hub.watch.state.collectAsStateWithLifecycle()
-            Triple(
-                when {
-                    s.connected -> "Connected · GATT"
-                    s.scanning -> "Searching for your Watch…"
-                    else -> "Not connected"
-                },
-                s.connected,
-                s.name ?: "Apple Watch",
-            )
-        }
-        OtherDeviceKind.AIRTAG -> {
-            val s by hub.airTag.state.collectAsStateWithLifecycle()
-            Triple(
-                when {
-                    s.found && s.separated -> "Nearby · separated from owner"
-                    s.found -> "Nearby · with owner"
-                    s.scanning -> "Searching for AirTags…"
-                    else -> "Not found"
-                },
-                s.found,
-                "AirTag",
-            )
-        }
-        OtherDeviceKind.HOMEPOD -> {
-            val s by hub.homePod.state.collectAsStateWithLifecycle()
-            Triple(
-                if (s.speakers.isNotEmpty()) "${s.speakers.size} on this Wi-Fi" else if (s.discovering) "Searching on Wi-Fi…" else "Not found",
-                s.speakers.isNotEmpty(),
-                s.selected ?: "HomePod",
-            )
-        }
-    }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
-        Row(
-            Modifier.padding(start = 8.dp, top = 8.dp).clip(CircleShape).clickable(onClick = onClose).padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = InaColors.Primary)
-            Text("Connect", color = InaColors.Primary, fontSize = 15.sp)
-        }
-        Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).clip(CircleShape).background(if (live) InaColors.Success else InaColors.Warning))
-            Spacer(Modifier.width(8.dp))
-            Text(status, color = InaColors.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            devOnly(kind.chip)?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
-        }
-        Text(name, color = InaColors.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp))
-        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-            ProductArtImage(kind.art, kind.title, Modifier.size(180.dp))
-        }
-        when (kind) {
-            OtherDeviceKind.WATCH -> WatchPanel(hub.watch)
-            OtherDeviceKind.AIRTAG -> AirTagPanel(hub.airTag)
-            OtherDeviceKind.HOMEPOD -> HomePodPanel(hub.homePod)
-        }
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("Disconnect", color = InaColors.Destructive) }
+    when (kind) {
+        OtherDeviceKind.WATCH -> WatchFlow(onClose)
+        OtherDeviceKind.AIRTAG -> AirTagFlow(onClose)
+        OtherDeviceKind.HOMEPOD -> HomePodFlow(onClose)
     }
 }
 
 @Composable
-private fun Hint(text: String?) {
-    if (text == null) return
-    Text(text, color = InaColors.TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
-}
-
-@Composable
-private fun WatchPanel(link: WatchLink) {
-    val context = LocalContext.current
-    val s by link.state.collectAsStateWithLifecycle()
-    val store = remember { InaGraph.settings(context) }
-    val settings by store.settings.collectAsStateWithLifecycle()
-    Card {
-        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
-            BatteryRing(s.battery, false, "Watch", 84.dp)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Rounded.Favorite, contentDescription = null, tint = InaColors.Destructive, modifier = Modifier.size(24.dp))
-                Text(if (s.heartRate >= 0) "${s.heartRate}" else "--", color = InaColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-                Text("BPM", color = InaColors.TextSecondary, fontSize = 11.sp)
-            }
-        }
-    }
-    Hint(s.error)
-    Spacer(Modifier.height(16.dp))
-    NowPlayingCard("Playing on this phone")
-    SectionTitle("Watch")
-    Card {
-        ToggleRow("Mirror notifications", if (BuildConfig.DEBUG) "Android alerts on your wrist · ANCS" else "Android alerts on your wrist", settings.watchNotifications, Icons.Rounded.Notifications, InaColors.Elevated) { on ->
-            store.update { it.copy(watchNotifications = on) }
-        }
-        SettingRow("Heart rate", devOnly("Standard GATT 0x180D") ?: "While your Watch shares it", if (s.heartRate >= 0) "${s.heartRate} BPM" else "--", Icons.Rounded.Favorite, InaColors.Elevated)
-    }
-    Hint("Heart rate and battery appear while your Watch broadcasts heart rate (for example during a workout with a broadcasting app).")
-}
-
-@Composable
-private fun AirTagPanel(finder: AirTagFinder) {
-    val context = LocalContext.current
-    val s by finder.state.collectAsStateWithLifecycle()
-    var finding by remember { mutableStateOf(false) }
-    Card {
-        Row(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    if (s.found) String.format(Locale.US, "%.1f m", s.distanceMeters) else "-- m",
-                    color = InaColors.TextPrimary, fontSize = 34.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
-                )
-                Text(
-                    if (!s.found) "Searching…" else if (finding) s.trend.label else "Nearby · ${s.rssi} dBm",
-                    color = InaColors.TextSecondary, fontSize = 12.sp, maxLines = 1, softWrap = false,
-                )
-            }
-            BatteryRing(s.battery, false, "Battery", 72.dp)
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
-            onClick = finder::playSound,
-            enabled = s.found && !s.ringing,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = InaColors.Primary),
-        ) { Text(if (s.ringing) "Playing…" else "Play Sound", fontWeight = FontWeight.SemiBold, maxLines = 1) }
-        Button(
-            onClick = { finding = !finding },
-            enabled = s.found,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary),
-        ) { Text(if (finding) "Stop Finding" else "Find Nearby", fontWeight = FontWeight.SemiBold, maxLines = 1) }
-    }
-    Hint(s.error)
-    SectionTitle("Tracking")
-    Card {
-        SettingRow("Status", "From the Find My broadcast", if (!s.found) "--" else if (s.separated) "Separated" else "With owner", Icons.Rounded.MyLocation, InaColors.Elevated)
-        SettingRow("Lost Mode", "Managed by the owner in Find My", icon = Icons.AutoMirrored.Rounded.OpenInNew, tint = InaColors.Elevated, onClick = {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.icloud.com/find")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        })
-    }
-    Hint("Distance is estimated from signal strength. Ultra Wideband direction needs the owner's iPhone.")
-}
-
-@Composable
-private fun HomePodPanel(browser: HomePodBrowser) {
-    val s by browser.state.collectAsStateWithLifecycle()
-    Card {
-        if (s.speakers.isEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (s.discovering) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = InaColors.TextSecondary)
-                Spacer(Modifier.width(12.dp))
-                Text("Looking for HomePods on this Wi-Fi…", color = InaColors.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        } else {
-            s.speakers.forEach { pod ->
-                SettingRow(pod.name, listOfNotNull(pod.model, pod.host).joinToString(" · "), icon = Icons.Rounded.Speaker, tint = InaColors.Elevated, onClick = { browser.select(pod.name) }) {
-                    if (s.selected == pod.name) Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = InaColors.Primary)
-                }
-            }
-        }
-    }
-    Hint(s.error)
-    Spacer(Modifier.height(16.dp))
-    NowPlayingCard("This phone · stream to HomePod with an AirPlay sender app")
-    Hint("Android can find HomePods and control this phone's playback. Sending audio to a HomePod needs an AirPlay sender app.")
-}
-
-@Composable
-private fun NowPlayingCard(subtitle: String) {
+internal fun NowPlayingCard(subtitle: String) {
     val context = LocalContext.current
     val audio = remember { PhoneAudio(context) }
     var playing by remember { mutableStateOf(audio.isPlaying) }

@@ -30,3 +30,8 @@
 - [x] Case pop-up shows on the Home Screen every time the lid opens; closing keeps it closed until the lid is shut
 - [x] Android screens match the simulator (tab bar, Connect, Learn More, Now Playing, in-ear status)
 - [x] Fix left/right battery swap from the AirPods broadcast
+- [x] Apple Watch pairing flow (camera reticle, manual list + 6-digit code, staged progress, disconnect / re-pair)
+- [x] Apple Watch Health suite: Activity rings + goals, live heart rate + thresholds, Blood Oxygen, ECG, Sleep, steps, faces, settings, Ping
+- [x] AirTag set-up (detected card, name + emoji, registered) and Find (distance radar, warmer/colder, sound, Lost Mode)
+- [x] HomePod set-up sheet (room, stereo pair) and AirPlay Now Playing + volume
+- [x] Same flows in the Android app (real Bluetooth / Wi-Fi steps, honest -- where Apple shares no data)

@@ -20,7 +20,7 @@ android {
         targetSdk = 36 // Android 16
         // Every CI build gets a higher versionCode so release APKs install over each other.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "1.2.0"
+        versionName = "1.3.0"
     }
 
     signingConfigs {
