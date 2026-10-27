@@ -476,37 +476,44 @@ object IBridgeStateStore {
 }
 
 /**
- * Decides when the case-open pop-up may appear, so it behaves like iPhone: once per lid open,
- * never stacked, and closing it keeps it closed. Shared by the in-app sheet, the overlay
- * window, the fallback Activity and the heads-up notification.
+ * Decides when the case-open pop-up may appear, so it behaves like iPhone: every time the lid
+ * opens, never stacked, and once closed it stays closed until the lid is shut and opened again.
+ * Shared by the in-app sheet, the overlay window, the fallback Activity and the heads-up
+ * notification. Covered by CasePopupGateTest.
  */
 object CasePopupGate {
     /** No adverts from a model for this long means the case was closed or carried away. */
-    const val CASE_AWAY_MS = 20_000L
-    /** Minimum gap between two pop-ups, whatever triggers them. */
-    const val MIN_INTERVAL_MS = 30_000L
-    /** After the user closes the pop-up, that model stays quiet this long. */
+    const val CASE_AWAY_MS = 10_000L
+    /** Minimum gap between two pop-ups, so one lid opening never shows two. */
+    const val MIN_INTERVAL_MS = 4_000L
+    /** Safety net: if the lid closing is never seen, a closed pop-up may return after this. */
     const val DISMISS_SNOOZE_MS = 10 * 60_000L
-    /** Ignored pop-ups (auto-hidden) snooze for a shorter time. */
-    const val IGNORE_SNOOZE_MS = 2 * 60_000L
     /** A pop-up that never reported back is considered gone after this. */
     const val SHOWING_TIMEOUT_MS = 60_000L
 
-    private class Seen(val counter: Int, val at: Long)
+    private class Seen(val counter: Int, val at: Long, val closed: Boolean)
 
     private val seen = HashMap<Int, Seen>()
     private val snoozedUntil = HashMap<Int, Long>()
     private var lastShownAt = Long.MIN_VALUE / 2
     private var showing = false
 
-    /** True when this advert is a fresh case opening (lid counter changed or the case reappeared). */
+    /**
+     * True when this advert is a fresh case opening: first sighting, the lid was seen closed
+     * before, the case reappeared after being away, or the lid counter moved.
+     * Seeing the lid closed (or the case going quiet) re-arms a pop-up the user had closed.
+     */
     @Synchronized
     fun isNewCaseOpen(packet: AirPodsState, now: Long): Boolean {
-        if (packet.rssi <= AppleProtocolSpec.POPUP_RSSI_THRESHOLD) return false
         val prev = seen[packet.modelId]
-        seen[packet.modelId] = Seen(packet.lidOpenCounter, now)
+        val closedNow = packet.lidClosed == true
+        val away = prev != null && now - prev.at > CASE_AWAY_MS
+        if (closedNow || away) snoozedUntil.remove(packet.modelId)
+        seen[packet.modelId] = Seen(packet.lidOpenCounter, now, closedNow)
+        if (closedNow) return false
+        if (packet.rssi <= AppleProtocolSpec.POPUP_RSSI_THRESHOLD) return false
         if (prev == null) return true
-        return prev.counter != packet.lidOpenCounter || now - prev.at > CASE_AWAY_MS
+        return prev.closed || away || prev.counter != packet.lidOpenCounter
     }
 
     /** Reserves the pop-up slot. Call [onDismissed] or [onHidden] when it goes away. */
@@ -521,18 +528,18 @@ object CasePopupGate {
         return true
     }
 
-    /** The user closed it (X, swipe, tap outside, Done). */
+    /** The user closed it (X, swipe, tap outside, Done): it stays closed for this lid opening. */
     @Synchronized
     fun onDismissed(modelId: Int, now: Long) {
         showing = false
         snoozedUntil[modelId] = now + DISMISS_SNOOZE_MS
     }
 
-    /** It hid itself or the user tapped Connect. */
+    /** It hid itself ([ignored]) or the user tapped Connect. Ignored ones also stay away for this opening. */
     @Synchronized
     fun onHidden(modelId: Int, now: Long, ignored: Boolean = false) {
         showing = false
-        if (ignored) snoozedUntil[modelId] = now + IGNORE_SNOOZE_MS
+        if (ignored) snoozedUntil[modelId] = now + DISMISS_SNOOZE_MS
     }
 
     @Synchronized
