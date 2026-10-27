@@ -193,6 +193,7 @@ export function Onboarding() {
   }
 
   const step = STEPS[index - 1];
+  if (!step) return null;
   const granted = state.permissions[step.key];
   return (
     <div className="relative flex h-full flex-col px-6 pb-6 pt-12">

@@ -26,7 +26,7 @@ export function Group({ title, footer, children, className }: { title?: string; 
   );
 }
 
-function RowIcon({ icon: I, tint }: { icon?: LucideIcon; tint?: string }) {
+function RowIcon({ icon: I, tint }: { icon?: LucideIcon | undefined; tint?: string | undefined }) {
   if (!I) return null;
   return (
     <span className={cn("grid size-7 shrink-0 place-items-center rounded-[8px] text-primary-foreground", tint ?? "bg-primary")}>
@@ -45,12 +45,12 @@ export function Row({
   onClick,
   children,
 }: {
-  icon?: LucideIcon;
-  tint?: string;
+  icon?: LucideIcon | undefined;
+  tint?: string | undefined;
   title: string;
-  detail?: string;
+  detail?: string | undefined;
   value?: ReactNode;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
   children?: ReactNode;
 }) {
   const Comp = onClick ? "button" : "div";
@@ -76,10 +76,10 @@ export function ToggleRow({
   onCheckedChange,
   disabled,
 }: {
-  icon?: LucideIcon;
-  tint?: string;
+  icon?: LucideIcon | undefined;
+  tint?: string | undefined;
   title: string;
-  detail?: string;
+  detail?: string | undefined;
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
   disabled?: boolean;
@@ -96,7 +96,7 @@ export function ToggleRow({
   );
 }
 
-export function Chip({ children, className }: { children: ReactNode; className?: string }) {
+export function Chip({ children, className }: { children: ReactNode; className?: string | undefined }) {
   return (
     <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-foreground/8 px-2 py-0.5 font-mono text-[10.5px] text-muted-foreground", className)}>
       {children}

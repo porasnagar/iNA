@@ -30,7 +30,7 @@ export interface LogEntry {
   time: string;
   channel: LogChannel;
   text: string;
-  hex?: string;
+  hex?: string | undefined;
 }
 
 export interface Accessory {
@@ -227,6 +227,9 @@ function useSimStore() {
   const actions = useMemo(() => {
     const set = setState;
     return {
+      setPermission(key: PermissionKey, value: boolean) {
+        set((s) => withLog({ ...s, permissions: { ...s.permissions, [key]: value } }, entry("SYS", `Permission ${value ? "granted" : "revoked"}: ${key}`)));
+      },
       grantPermission(key: PermissionKey) {
         set((s) => withLog({ ...s, permissions: { ...s.permissions, [key]: true } }, entry("SYS", `Permission granted: ${key}`)));
       },

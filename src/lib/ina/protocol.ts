@@ -201,7 +201,7 @@ export function cycleMode(current: ListeningMode, supported: ListeningMode[] = M
   if (supported.length === 0) return current;
   const order = MODE_ORDER.filter((m) => supported.includes(m));
   const idx = order.indexOf(current);
-  return order[(idx + 1) % order.length];
+  return order[(idx + 1) % order.length] ?? current;
 }
 
 /** -1 means "unknown / not connected" and must never be replaced by the phone battery. */
@@ -239,18 +239,19 @@ function batteryToNibble(level: number): number {
  */
 export function parseProximityPacket(b: Uint8Array | number[], rssi: number): ProximityPacket | null {
   if (b.length < 9 || b[0] !== PROXIMITY_PAIRING_TYPE) return null;
-  const status = b[5];
+  const at = (i: number) => (b[i] ?? 0) & 0xff;
+  const status = at(5);
   return {
-    modelId: ((b[3] & 0xff) << 8) | (b[4] & 0xff),
+    modelId: (at(3) << 8) | at(4),
     leftInEar: (status & 0b0000_0010) !== 0,
     rightInEar: (status & 0b0000_1000) !== 0,
-    left: nibbleToBattery((b[6] >> 4) & 0x0f),
-    right: nibbleToBattery(b[6] & 0x0f),
-    case: nibbleToBattery(b[7] & 0x0f),
-    leftCharging: (b[7] & 0b0001_0000) !== 0,
-    rightCharging: (b[7] & 0b0010_0000) !== 0,
-    caseCharging: (b[7] & 0b0100_0000) !== 0,
-    lidCounter: b[8] & 0x07,
+    left: nibbleToBattery((at(6) >> 4) & 0x0f),
+    right: nibbleToBattery(at(6) & 0x0f),
+    case: nibbleToBattery(at(7) & 0x0f),
+    leftCharging: (at(7) & 0b0001_0000) !== 0,
+    rightCharging: (at(7) & 0b0010_0000) !== 0,
+    caseCharging: (at(7) & 0b0100_0000) !== 0,
+    lidCounter: at(8) & 0x07,
     rssi,
   };
 }

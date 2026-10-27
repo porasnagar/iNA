@@ -109,7 +109,7 @@ export function SimulatorPanel() {
         </div>
         <div className="mt-3 space-y-2">
           <SwitchField id="sim-preview" label="Preview Connected UI" checked={state.previewConnected} onChange={actions.setPreviewConnected} />
-          <SwitchField id="sim-overlay" label="Overlay permission granted" checked={state.permissions.overlay} onChange={(v) => (v ? actions.grantPermission("overlay") : actions.resetOnboarding())} />
+          <SwitchField id="sim-overlay" label="Overlay permission granted" checked={state.permissions.overlay} onChange={(v) => actions.setPermission("overlay", v)} />
         </div>
       </Panel>
 
@@ -150,7 +150,7 @@ export function SimulatorPanel() {
                     {formatBattery(a[k])}
                   </button>
                 </div>
-                <Slider value={[a[k]]} min={0} max={100} step={10} onValueChange={([v]) => actions.updateAccessory({ [k]: v })} aria-label={`${k} battery`} />
+                <Slider value={[a[k]]} min={0} max={100} step={10} onValueChange={([v]) => actions.updateAccessory({ [k]: v ?? a[k] })} aria-label={`${k} battery`} />
               </div>
             );
           })}
@@ -162,7 +162,7 @@ export function SimulatorPanel() {
                 {a.rssi} dBm {a.rssi > POPUP_RSSI_THRESHOLD ? "· near" : "· too far"}
               </span>
             </div>
-            <Slider value={[a.rssi]} min={-100} max={-30} step={1} onValueChange={([v]) => actions.updateAccessory({ rssi: v })} aria-label="RSSI" />
+            <Slider value={[a.rssi]} min={-100} max={-30} step={1} onValueChange={([v]) => actions.updateAccessory({ rssi: v ?? a.rssi })} aria-label="RSSI" />
           </div>
 
           {model?.caps.inEarDetection && (

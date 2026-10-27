@@ -67,7 +67,7 @@ export function parseManifest(json: string): { ok: true; manifest: OtaManifest }
   const result = otaManifestSchema.safeParse(raw);
   if (!result.success) {
     const issue = result.error.issues[0];
-    return { ok: false, error: `${issue.path.join(".") || "manifest"}: ${issue.message}` };
+    return { ok: false, error: issue ? `${issue.path.join(".") || "manifest"}: ${issue.message}` : "Invalid manifest" };
   }
   return { ok: true, manifest: result.data };
 }

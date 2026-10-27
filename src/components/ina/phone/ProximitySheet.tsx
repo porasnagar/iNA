@@ -32,6 +32,7 @@ export function ProximitySheet() {
       const t = window.setTimeout(() => actions.connectPaired(), 900);
       return () => window.clearTimeout(t);
     }
+    return undefined;
   }, [sheet?.paired, sheet?.stage, state.connected, state.previewConnected, actions]);
 
   if (!sheet) return null;
