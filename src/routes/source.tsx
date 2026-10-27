@@ -3,6 +3,7 @@ import { Check, Copy, Download, FileCode2, FileCog, FileText, Loader2, Package }
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { BuildGuide } from "@/components/ina/site/DeveloperCenter";
 import { Button } from "@/components/ui/button";
 import { buildProjectZip, downloadBlob, EMBEDDED_ART_FILE, generateEmbeddedArtKotlin, SOURCE_FILES, type SourceFile } from "@/lib/android-source";
 import { highlight } from "@/lib/highlight";
@@ -11,15 +12,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/source")({
   head: () => ({
     meta: [
-      { title: "iNA Android Source — Kotlin, manifest & resources" },
+      { title: "iNA Developer Center — Android Kotlin source & APK build" },
       {
         name: "description",
         content: "Copy or download the iNA Android Studio project: MainActivity, foreground service, overlay pop-up, Quick Settings tile, manifest and strings.",
       },
-      { property: "og:title", content: "iNA Android Source — Kotlin, manifest & resources" },
+      { property: "og:title", content: "iNA Developer Center — Android Kotlin source & APK build" },
       { property: "og:description", content: "Production Kotlin for iNA's case-open pop-up, noise control tile, AAP controller and OTA rule engine." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: SourcePage,
@@ -96,22 +95,29 @@ function SourcePage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
-          <p className="text-sm font-medium text-primary">dev.ibridge.android · Android 10–16+</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">Android source</h1>
-          <p className="mt-3 text-muted-foreground">
-            Kotlin + Jetpack Compose, ready for Android Studio. Copy single files or download the whole project with Gradle setup and product art.
+          <p className="font-mono text-xs font-medium uppercase tracking-[0.18em] text-primary">Developer center</p>
+          <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">iNA Android source code in Kotlin</h1>
+          <p className="mt-4 text-muted-foreground sm:text-lg">
+            Kotlin + Jetpack Compose for package dev.ibridge.android, ready for Android Studio. Copy single files or download the whole project with
+            Gradle setup and product art.
           </p>
           <p className="mt-2 font-mono text-xs text-muted-foreground">
             {SOURCE_FILES.length} files · {totalLines.toLocaleString()} lines · AGP 8.10 · Kotlin 2.1 · compileSdk 36
           </p>
         </div>
-        <Button size="lg" className="h-12 shrink-0 rounded-2xl px-6" onClick={() => void downloadZip()} disabled={zipping}>
+        <Button size="lg" className="h-12 shrink-0 rounded-full px-6 font-semibold" onClick={() => void downloadZip()} disabled={zipping}>
           {zipping ? <Loader2 className="size-4 animate-spin" /> : <Package className="size-4" />}
           {zipping ? "Packaging…" : "Download project (.zip)"}
         </Button>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <BuildGuide />
+
+      <section aria-labelledby="browse" className="mt-16">
+      <h2 id="browse" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        Browse the Kotlin source
+      </h2>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
             {SOURCE_FILES.map((f) => (
@@ -130,7 +136,7 @@ function SourcePage() {
           </div>
           <div className="hidden space-y-5 lg:block">
             <div>
-              <h2 className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Core files</h2>
+              <h3 className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Core files</h3>
               <div className="space-y-0.5">
                 {primary.map((f) => (
                   <FileButton key={f.path} f={f} />
@@ -138,7 +144,7 @@ function SourcePage() {
               </div>
             </div>
             <div>
-              <h2 className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Project & resources</h2>
+              <h3 className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Project & resources</h3>
               <div className="space-y-0.5">
                 {others.map((f) => (
                   <FileButton key={f.path} f={f} />
@@ -181,6 +187,7 @@ function SourcePage() {
           </div>
         </section>
       </div>
+      </section>
     </main>
   );
 }
