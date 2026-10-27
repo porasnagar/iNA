@@ -10,7 +10,7 @@ import { Group, Row } from "../ui";
 import { BackLink, FrameGuide, ParticleReticle, StageList, playChime, useInterval, useScrollTop } from "./parts";
 import { WatchSuite } from "./WatchSuite";
 
-type Phase = "camera" | "manual" | "code" | "progress" | "ready" | "reconnecting" | "suite";
+type Phase = "manual" | "code" | "progress" | "ready" | "reconnecting" | "suite";
 
 const NEARBY = [
   { name: "Apple Watch Series 11", detail: "46 mm · Jet Black Aluminium", rssi: -48 },
@@ -32,7 +32,7 @@ export function WatchFlow({
   onForget: () => void;
   onClose: () => void;
 }) {
-  const [phase, setPhase] = useState<Phase>(paired ? "reconnecting" : "camera");
+  const [phase, setPhase] = useState<Phase>(paired ? "reconnecting" : "manual");
   const [name, setName] = useState(NEARBY[0]!.name);
   const top = useScrollTop(phase);
 
@@ -44,15 +44,14 @@ export function WatchFlow({
 
   const restart = () => {
     onForget();
-    setPhase("camera");
+    setPhase("manual");
   };
 
   return (
     <div ref={top}>
-      {phase === "camera" && <CameraStep onManual={() => setPhase("manual")} onRead={() => setPhase("progress")} onClose={onClose} />}
       {phase === "manual" && (
         <ManualStep
-          onBack={() => setPhase("camera")}
+          onBack={onClose}
           onPick={(n) => {
             setName(n);
             setPhase("code");
@@ -83,62 +82,14 @@ export function WatchFlow({
   );
 }
 
-function CameraStep({ onManual, onRead, onClose }: { onManual: () => void; onRead: () => void; onClose: () => void }) {
-  const [state, setState] = useState<"looking" | "steady" | "read">("looking");
-  const read = useRef(onRead);
-  read.current = onRead;
-  useEffect(() => {
-    if (state === "steady") {
-      const t = setTimeout(() => setState("read"), 1400);
-      return () => clearTimeout(t);
-    }
-    if (state === "read") {
-      playChime([880, 1320], 0.12);
-      const t = setTimeout(() => read.current(), 900);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [state]);
-  const locked = state !== "looking";
-  return (
-    <div className="space-y-4 pb-6">
-      <div className="px-5 pt-2">
-        <BackLink onClick={onClose} />
-      </div>
-      <div className="relative mx-4 aspect-[4/5] overflow-hidden rounded-[28px] bg-viewfinder text-viewfinder-foreground">
-        <ParticleReticle locked={locked} className="absolute inset-0" />
-        <FrameGuide locked={locked} />
-        <div className="absolute inset-x-0 bottom-4 flex justify-center">
-          <span className="flex items-center gap-2 rounded-full bg-viewfinder/70 px-3 py-1.5 text-[12px] font-medium backdrop-blur">
-            {state === "read" ? <Check className="size-3.5 text-success" /> : <span className="size-1.5 animate-pulse rounded-full bg-success" />}
-            {state === "looking" ? "Looking for Apple Watch…" : state === "steady" ? "Hold steady…" : "Apple Watch found"}
-          </span>
-        </div>
-      </div>
-      <div className="px-6 text-center">
-        <h3 className="text-[22px] font-bold leading-tight tracking-tight">Hold Apple Watch up to the Camera</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">Position the animation on your Watch in the viewfinder to pair.</p>
-      </div>
-      <div className="mx-4 space-y-2">
-        <Button className="h-12 w-full rounded-2xl text-[15px] font-semibold" onClick={() => setState("steady")} disabled={locked}>
-          Simulate holding up your Watch
-        </Button>
-        <button type="button" onClick={onManual} className="w-full py-2 text-[15px] text-primary">
-          Pair Apple Watch Manually
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ManualStep({ onBack, onPick }: { onBack: () => void; onPick: (name: string) => void }) {
   const [found, setFound] = useState(0);
   useInterval(() => setFound((f) => Math.min(NEARBY.length, f + 1)), found < NEARBY.length ? 900 : null);
   return (
     <div className="space-y-4 pb-6">
       <div className="px-5 pt-2">
-        <BackLink label="Camera" onClick={onBack} />
-        <h3 className="mt-2 text-[26px] font-bold leading-tight tracking-tight">Pair Apple Watch Manually</h3>
+        <BackLink onClick={onBack} />
+        <h3 className="mt-2 text-[26px] font-bold leading-tight tracking-tight">Pair Apple Watch</h3>
         <p className="mt-1 text-[13px] text-muted-foreground">On your Watch, tap the ⓘ in the corner, then choose it below.</p>
       </div>
       <Group title="Nearby" footer="Found over Bluetooth. Pick the name your Watch shows.">

@@ -426,7 +426,8 @@ private fun EcgTraceView(bpm: Int, running: Boolean) {
 
 /* ═══════════════════════════ Apple Watch ═══════════════════════════ */
 
-private enum class WatchPhase { CAMERA, MANUAL, PROGRESS, READY, SUITE }
+// Android can't read Apple's camera pairing pattern, so pairing starts with the nearby list.
+private enum class WatchPhase { MANUAL, PROGRESS, READY, SUITE }
 
 @Composable
 fun WatchFlow(onClose: () -> Unit) {
@@ -435,21 +436,18 @@ fun WatchFlow(onClose: () -> Unit) {
     val store = remember { PairedDevicesStore.get(context) }
     val paired by store.state.collectAsStateWithLifecycle()
     val s by link.state.collectAsStateWithLifecycle()
-    var phase by rememberSaveable { mutableStateOf(if (paired.watch != null) WatchPhase.SUITE else WatchPhase.CAMERA) }
+    var phase by rememberSaveable { mutableStateOf(if (paired.watch != null) WatchPhase.SUITE else WatchPhase.MANUAL) }
     var preview by rememberSaveable { mutableStateOf(paired.watch?.preview == true) }
 
     DisposableEffect(Unit) { onDispose { link.stop() } }
     LaunchedEffect(phase, preview) {
         if (preview) return@LaunchedEffect
         when (phase) {
-            WatchPhase.CAMERA -> { link.stop(); link.start(autoConnect = true) }
             WatchPhase.MANUAL -> { link.stop(); link.start(autoConnect = false) }
             WatchPhase.SUITE -> if (!link.state.value.connected) link.start(autoConnect = true)
             else -> Unit
         }
     }
-    // Camera step: the first Watch heard starts pairing.
-    LaunchedEffect(phase, s.name) { if (phase == WatchPhase.CAMERA && !preview && s.name != null) { delay(900); phase = WatchPhase.PROGRESS } }
 
     val watch = paired.watch
     when {
@@ -461,51 +459,22 @@ fun WatchFlow(onClose: () -> Unit) {
                 link.stop()
                 store.update { it.copy(watch = null) }
                 preview = false
-                phase = WatchPhase.CAMERA
+                phase = WatchPhase.MANUAL
             },
         )
-        phase == WatchPhase.MANUAL -> WatchManualStep(s, onBack = { phase = WatchPhase.CAMERA }) { address ->
-            link.connectTo(address)
-            phase = WatchPhase.PROGRESS
-        }
-        phase == WatchPhase.PROGRESS -> WatchProgressStep(s, preview, onRetry = { phase = WatchPhase.CAMERA }) { phase = WatchPhase.READY }
+        phase == WatchPhase.PROGRESS -> WatchProgressStep(s, preview, onRetry = { phase = WatchPhase.MANUAL }) { phase = WatchPhase.READY }
         phase == WatchPhase.READY -> WatchReadyStep(if (preview) "Apple Watch Series 11" else s.name ?: "Apple Watch") {
             store.update { it.copy(watch = PairedWatch(name = if (preview) "Apple Watch Series 11" else s.name ?: "Apple Watch", preview = preview)) }
             phase = WatchPhase.SUITE
         }
-        else -> WatchCameraStep(
-            s = s,
-            onClose = onClose,
-            onManual = { phase = WatchPhase.MANUAL },
+        else -> WatchManualStep(
+            s,
+            onBack = onClose,
             onPreview = { preview = true; link.stop(); phase = WatchPhase.PROGRESS },
-            onRetry = { link.stop(); link.start(autoConnect = true) },
-        )
-    }
-}
-
-@Composable
-private fun WatchCameraStep(s: WatchState, onClose: () -> Unit, onManual: () -> Unit, onPreview: () -> Unit, onRetry: () -> Unit) {
-    val locked = s.name != null
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
-        BackLink("Connect", onClose)
-        Box(Modifier.padding(16.dp).fillMaxWidth().aspectRatio(0.8f).clip(RoundedCornerShape(28.dp)).background(DeviceArtColors.Viewfinder)) {
-            ParticleReticle(locked, Modifier.fillMaxSize())
-            FrameGuide(locked, Modifier.fillMaxSize())
-            Row(
-                Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp).clip(CircleShape).background(DeviceArtColors.Viewfinder.copy(alpha = 0.7f)).padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (locked) Icon(Icons.Rounded.Check, contentDescription = null, tint = InaColors.Success, modifier = Modifier.size(14.dp)) else PulseDot()
-                Spacer(Modifier.width(8.dp))
-                Text(if (locked) "${s.name} found" else if (s.scanning) "Looking for Apple Watch…" else "Not searching", color = DeviceArtColors.ViewfinderText, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-            }
-        }
-        FlowTitle("Hold Apple Watch Near This Phone", "Start a workout with heart-rate sharing on your Watch. iNA finds it over Bluetooth.", center = true)
-        Note(s.error)
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (!s.scanning && !locked) WideButton("Try Again", onClick = onRetry)
-            if (BuildConfig.DEBUG) WideButton("Preview with a sample Watch · debug", secondary = true, onClick = onPreview)
-            LinkButton("Pair Apple Watch Manually", onManual)
+            onRetry = { link.stop(); link.start(autoConnect = false) },
+        ) { address ->
+            link.connectTo(address)
+            phase = WatchPhase.PROGRESS
         }
     }
 }
@@ -519,10 +488,10 @@ private fun SignalBars(rssi: Int) {
 }
 
 @Composable
-private fun WatchManualStep(s: WatchState, onBack: () -> Unit, onPick: (String) -> Unit) {
+private fun WatchManualStep(s: WatchState, onBack: () -> Unit, onPreview: () -> Unit, onRetry: () -> Unit, onPick: (String) -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
-        BackLink("Camera", onBack)
-        FlowTitle("Pair Apple Watch Manually", "Choose your Watch from the list. It appears while it shares heart rate.")
+        BackLink("Connect", onBack)
+        FlowTitle("Pair Apple Watch", "Start a workout with heart-rate sharing on your Watch, then choose it from the list.")
         SectionTitle("Nearby")
         Card {
             s.nearby.forEach { w ->
@@ -537,6 +506,10 @@ private fun WatchManualStep(s: WatchState, onBack: () -> Unit, onPick: (String) 
             }
         }
         Note(s.error ?: "Apple shows the 6-digit pairing code only to iPhone, so on Android you pick your Watch here instead.")
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (!s.scanning) WideButton("Search Again", onClick = onRetry)
+            if (BuildConfig.DEBUG) WideButton("Preview with a sample Watch · debug", secondary = true, onClick = onPreview)
+        }
     }
 }
 
