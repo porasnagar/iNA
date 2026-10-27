@@ -1,0 +1,48 @@
+name: Device Compatibility Report
+description: Report verified hardware interoperability on your Android device
+title: "[Device Report]: "
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help the community build the most accurate Android hardware compatibility matrix!
+  - type: input
+    id: phone_model
+    attributes:
+      label: Phone Model & Manufacturer
+      placeholder: "e.g. Google Pixel 8 Pro"
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: Android Version & OEM ROM
+      placeholder: "e.g. Android 14 (Stock Pixel Build AP2A.240805.005)"
+    validations:
+      required: true
+  - type: input
+    id: accessory_tested
+    attributes:
+      label: Accessory Model & Firmware
+      placeholder: "e.g. AirPods Pro 2 (USB-C) Firmware 7B19"
+    validations:
+      required: true
+  - type: checkboxes
+    id: features_working
+    attributes:
+      label: Working Features
+      options:
+        - label: "Battery Telemetry (Left, Right, Case)"
+        - label: "Listening Mode Toggling (ANC / Transparency / Adaptive)"
+        - label: "In-Ear Detection"
+        - label: "Digital Crown / Hardware Button Toggles"
+        - label: "Apple Watch ANCS Notification Forwarding"
+        - label: "Apple Watch AMS Media Remote"
+        - label: "Apple Watch Wi-Fi Continuity Sync"
+        - label: "AirTag Sound Trigger"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any special setup or edge cases observed.

@@ -1,0 +1,54 @@
+name: Sync to iNA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync to porasnagar/iNA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to porasnagar/iNA
+        env:
+          SYNC_TOKEN: ${{ secrets.INA_SYNC_TOKEN || secrets.SYNC_TOKEN || secrets.GH_PAT || secrets.PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::Missing INA_SYNC_TOKEN secret! Please add INA_SYNC_TOKEN (Personal Access Token with 'repo' scope) to Settings -> Secrets and variables -> Actions in porasnagar/apple-device-orbit."
+            exit 1
+          fi
+
+          git config user.name "porasnagar"
+          git config user.email "86702426+porasnagar@users.noreply.github.com"
+
+          # Add authenticated remote for iNA
+          git remote add destination "https://x-access-token:${SYNC_TOKEN}@github.com/porasnagar/iNA.git"
+
+          echo "==> Pushing to iNA website branch..."
+          git push destination HEAD:refs/heads/website --force
+
+          echo "==> Pushing to iNA main branch..."
+          git push destination HEAD:refs/heads/main --force
+
+          echo "==> Syncing standalone Android Studio project to android branch..."
+          tree=$(git rev-parse HEAD:src/android)
+          parent_args=()
+          if git fetch --depth=1 destination android 2>/dev/null; then
+            parent=$(git rev-parse FETCH_HEAD)
+            parent_args=(-p "$parent")
+          fi
+          msg="Sync from apple-device-orbit@${GITHUB_SHA::7}: $(git log -1 --format=%s)"
+          sha=$(git commit-tree "$tree" "${parent_args[@]}" -m "$msg")
+          git push destination "$sha:refs/heads/android" --force
+
+          echo "==> Successfully synchronized to porasnagar/iNA!"
