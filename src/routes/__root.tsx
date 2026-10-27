@@ -127,15 +127,15 @@ const NAV = [
 function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-xl">
-      <div className="mx-auto grid h-14 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto grid h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <Link to="/" className="flex min-w-0 items-center gap-2.5" aria-label="iNA home">
           <InaLogo className="size-8 shrink-0" />
-          <div className="min-w-0 leading-tight">
+          <div className="hidden min-w-0 leading-tight sm:block">
             <div className="text-[15px] font-semibold tracking-tight">iNA</div>
             <div className="hidden truncate text-[11px] text-muted-foreground sm:block">Apple hardware, unlocked on Android</div>
           </div>
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-0.5 overflow-x-auto">
+        <nav aria-label="Main" className="flex min-w-0 items-center justify-self-end gap-0.5 overflow-x-auto [scrollbar-width:none]">
           {NAV.map((n) => (
             <Link
               key={n.to}
