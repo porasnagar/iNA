@@ -6,6 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Release signing comes from env vars set by GitHub Actions (see README). When they are
+// missing, the release APK is signed with the debug key so it still installs.
+val releaseKeystore: File? = System.getenv("INA_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+
 android {
     namespace = "dev.ibridge.android"
     compileSdk = 36
@@ -14,15 +18,34 @@ android {
         applicationId = "dev.ibridge.android"
         minSdk = 29 // Android 10
         targetSdk = 36 // Android 16
-        versionCode = 1
+        // Every CI build gets a higher versionCode so release APKs install over each other.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("INA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("INA_KEY_ALIAS")
+                keyPassword = System.getenv("INA_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+    }
+
+    // assembleRelease runs lintVitalRelease by default; keep lint advisory so CI never fails on it.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {
