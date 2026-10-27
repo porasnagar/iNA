@@ -95,6 +95,10 @@ export interface SimState {
   manifest: OtaManifest;
   otaSyncing: boolean;
   lastSync: string | null;
+  /** Display setting: solid surfaces instead of Liquid Glass. */
+  reduceTransparency: boolean;
+  /** Ear Tip Fit Test has completed at least once (feeds the suggested action). */
+  fitTested: boolean;
   log: LogEntry[];
 }
 
@@ -151,6 +155,8 @@ const initialState: SimState = {
   manifest: DEFAULT_MANIFEST,
   otaSyncing: false,
   lastSync: null,
+  reduceTransparency: false,
+  fitTested: false,
   log: [],
 };
 
@@ -188,6 +194,8 @@ function useSimStore() {
           settings: { ...s.settings, ...saved.settings },
           manifest: saved.manifest ?? s.manifest,
           lastSync: saved.lastSync ?? s.lastSync,
+          reduceTransparency: saved.reduceTransparency ?? s.reduceTransparency,
+          fitTested: saved.fitTested ?? s.fitTested,
           accessory: saved.accessory ? { ...s.accessory, ...saved.accessory, leftInEar: false, rightInEar: false } : s.accessory,
         }));
       }
@@ -200,10 +208,10 @@ function useSimStore() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory } = state;
+    const { onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, fitTested } = state;
     window.localStorage.setItem(
       PERSIST_KEY,
-      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory }),
+      JSON.stringify({ onboarded, permissions, pairedIds, settings, manifest, lastSync, accessory, reduceTransparency, fitTested }),
     );
   }, [hydrated, state]);
 
