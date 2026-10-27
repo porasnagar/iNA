@@ -85,8 +85,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#111114" },
       { title: "iNA — Universal Apple Hardware Interoperability Suite for Android" },
-      { name: "description", content: "iNA brings AirPods, Beats, Apple Watch and AirTag features to Android 10–16+ with zero root." },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "iNA" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
