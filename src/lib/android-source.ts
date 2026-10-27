@@ -54,7 +54,7 @@ export const SOURCE_FILES: SourceFile[] = Object.entries(RAW)
       language: languageOf(name),
       content,
       primary: PRIMARY_ORDER.includes(name),
-      description: DESCRIPTIONS[name] ?? "",
+      description: DESCRIPTIONS[name] ?? (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "Project root"),
     };
   })
   .sort((a, b) => {

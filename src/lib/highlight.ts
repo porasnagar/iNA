@@ -26,7 +26,7 @@ function highlightKotlin(code: string): string {
     else if (str) out += span("text-success", str);
     else if (annotation) out += span("text-warning", annotation);
     else if (num) out += span("text-tint-teal", num);
-    else if (ident && KOTLIN_KEYWORDS.has(ident)) out += span("text-tint-purple", ident);
+    else if (ident && KOTLIN_KEYWORDS.has(ident) && code[idx - 1] !== ".") out += span("text-tint-purple", ident);
     else if (ident && /^[A-Z]/.test(ident)) out += span("text-tint-blue", ident);
     else out += escape(whole);
     last = idx + whole.length;
