@@ -19,3 +19,4 @@
 - [ ] framer-motion: page transitions, staggered cards, spring hover/press
 - [ ] 120Hz: GPU-friendly web animations; Android high refresh rate for activities + overlay
 - [ ] Open source: LICENSE, CONTRIBUTING.md, README monorepo, vercel.json, Open Source badge + GitHub link (header, hero, footer)
+- [ ] Home keeps the long premium scroll (sections reveal on scroll) like the liked Live preview, with links into the dedicated pages
