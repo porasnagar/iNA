@@ -173,3 +173,18 @@ function SiteFooter() {
     </footer>
   );
 }
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen pb-[env(safe-area-inset-bottom)]">
+        <SiteHeader />
+        <Outlet />
+        <SiteFooter />
+      </div>
+      <Toaster theme="dark" position="bottom-center" />
+    </QueryClientProvider>
+  );
+}
