@@ -74,9 +74,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -1327,37 +1324,25 @@ fun InaApp(
         var other by rememberSaveable { mutableStateOf<OtherDeviceKind?>(null) }
         // Liquid Glass: blur the app behind the in-app case pop-up (Android 12+, unless Reduce Transparency).
         val blurBackdrop = inlinePopup != null && !settings.reduceTransparency && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        Column(Modifier.fillMaxSize().then(if (blurBackdrop) Modifier.blur(24.dp) else Modifier)) {
-            Box(Modifier.weight(1f)) {
-                val openOther = other
-                when (tab) {
-                    InaTab.DEVICE -> when {
-                        openOther != null -> OtherDeviceScreen(openOther, onClose = { other = null })
-                        state.connected -> DeviceScreen(state, actions, onOpenControls = { tab = InaTab.CONTROLS })
-                        else -> ConnectDeviceScreen(state, actions, onOpenOther = { other = it })
-                    }
-                    InaTab.CONTROLS -> ControlsScreen(state, settings, actions)
-                    InaTab.RULES -> RulesScreen(rules, rulesSyncing, actions)
-                    InaTab.SETTINGS -> SettingsScreen(state, settings, onboarding, actions, permissions)
+        Box(Modifier.fillMaxSize().then(if (blurBackdrop) Modifier.blur(24.dp) else Modifier)) {
+            val openOther = other
+            when (tab) {
+                InaTab.DEVICE -> when {
+                    openOther != null -> OtherDeviceScreen(openOther, onClose = { other = null })
+                    state.connected -> DeviceScreen(state, actions, onOpenControls = { tab = InaTab.CONTROLS })
+                    else -> ConnectDeviceScreen(state, actions, onOpenOther = { other = it })
                 }
+                InaTab.CONTROLS -> ControlsScreen(state, settings, actions)
+                InaTab.RULES -> RulesScreen(rules, rulesSyncing, actions)
+                InaTab.SETTINGS -> SettingsScreen(state, settings, onboarding, actions, permissions)
             }
-            NavigationBar(containerColor = InaColors.Background, tonalElevation = 0.dp) {
-                tabs.forEach { t ->
-                    NavigationBarItem(
-                        selected = tab == t,
-                        onClick = { tab = t },
-                        icon = { Icon(t.icon, contentDescription = t.label) },
-                        label = { Text(t.label, fontSize = 11.sp, maxLines = 1, softWrap = false) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = InaColors.Primary,
-                            selectedTextColor = InaColors.Primary,
-                            indicatorColor = Color.Transparent,
-                            unselectedIconColor = InaColors.TextSecondary,
-                            unselectedTextColor = InaColors.TextSecondary,
-                        ),
-                    )
-                }
-            }
+            // Floating Liquid Glass tab bar, the same as the simulator's; screens scroll under it.
+            FloatingTabBar(
+                items = tabs.map { it.label to it.icon },
+                selected = tabs.indexOf(tab),
+                onSelect = { tab = tabs[it] },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
         if (inlinePopup != null) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1658,13 +1643,17 @@ private val LEARN_MORE = listOf(
 
 @Composable
 fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions, onOpenOther: (OtherDeviceKind) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Connect a Device", "Bring your Apple accessory close to this phone.")
         Card {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                ProductArtImage(ProductArtKey.AIRPODS_PRO, "AirPods Pro", Modifier.size(140.dp))
+            Box(Modifier.fillMaxWidth().height(208.dp), contentAlignment = Alignment.Center) {
+                RadarRings()
+                ProductArtImage(ProductArtKey.AIRPODS_PRO, "AirPods Pro", Modifier.size(128.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(InaColors.Hairline))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                PulseDot()
+                Spacer(Modifier.width(8.dp))
                 Text("Searching for nearby Apple accessories…", color = InaColors.TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 devOnly("0x004C · 0x07")?.let { Text(it, color = InaColors.TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
             }
@@ -1678,44 +1667,30 @@ fun ConnectDeviceScreen(state: AirPodsState, actions: InaActions, onOpenOther: (
                 BatteryRing(-1, false, "Case", 64.dp)
             }
             Text(
-                "Battery levels appear once an accessory connects.",
+                "Battery levels appear once an accessory connects. iNA never shows your phone's battery in their place.",
                 color = InaColors.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )
         }
+        Spacer(Modifier.height(16.dp))
+        ConnectSteps()
         if (BuildConfig.DEBUG) {
             Spacer(Modifier.height(16.dp))
             PreviewToggleCard(state, actions)
         }
         OtherDevicesList(onOpenOther)
         Spacer(Modifier.height(24.dp))
-        Text("Learn More", color = InaColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
-        Spacer(Modifier.height(8.dp))
-        LEARN_MORE.forEach { f -> LearnMoreFamily(f); Spacer(Modifier.height(8.dp)) }
-        Spacer(Modifier.height(16.dp))
-        Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("How iNA works", color = InaColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                val lines = if (BuildConfig.DEBUG) listOf(
-                    "Zero root: 100% user-space, public Bluetooth APIs.",
-                    "BLE scanner filters Apple 0x004C, type 0x07 Proximity Pairing frames.",
-                    "AAP over L2CAP PSM 0x1001 switches modes and reads gestures.",
-                    "Signed OTA rules add new models without an app update.",
-                ) else listOf(
-                    "No root needed.",
-                    "Open your AirPods case near the phone to see the battery pop-up.",
-                    "Already paired in Android Bluetooth? Tap Connect on the pop-up.",
-                    "New AirPods? Hold the button on the case until the light flashes white, then tap Connect.",
-                )
-                lines.forEach { Text("• $it", color = InaColors.TextSecondary, fontSize = 13.sp) }
+        LearnMoreSection {
+            Column {
+                LEARN_MORE.forEachIndexed { i, f -> LearnMoreFamily(f, startExpanded = i == 1); Spacer(Modifier.height(8.dp)) }
             }
         }
     }
 }
 
 @Composable
-private fun LearnMoreFamily(f: FamilyInfo) {
-    var expanded by rememberSaveable(f.title) { mutableStateOf(false) }
+private fun LearnMoreFamily(f: FamilyInfo, startExpanded: Boolean = false) {
+    var expanded by rememberSaveable(f.title) { mutableStateOf(startExpanded) }
     Card {
         Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ProductArtImage(f.art, f.title, Modifier.size(52.dp))
@@ -1746,7 +1721,7 @@ private fun LearnMoreFamily(f: FamilyInfo) {
 @Composable
 fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () -> Unit) {
     val model = state.model
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(if (state.isPreview) InaColors.Warning else InaColors.Success))
             Spacer(Modifier.width(8.dp))
@@ -1767,8 +1742,8 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
         }
-        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-            ProductArtImage(model?.art ?: ProductArtKey.AIRPODS_PRO, model?.name, Modifier.size(180.dp))
+        Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(200.dp).stage(), contentAlignment = Alignment.Center) {
+            ProductArtImage(model?.art ?: ProductArtKey.AIRPODS_PRO, model?.name, Modifier.size(180.dp).floating())
         }
         Card {
             Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.SpaceAround) {
@@ -1797,6 +1772,13 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
                 }
             }
         }
+        if (modes.isEmpty() && model != null && model.caps.supportedModes.isEmpty()) {
+            Text("${model.name} has no noise control hardware.", color = InaColors.TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        AirPodsNowPlayingCard(state, onResume = actions::resumeMedia)
+        Spacer(Modifier.height(8.dp))
+        EarStatusRow(state)
         if (canControl && model != null && (model.caps.conversationAwareness || model.caps.personalizedVolume)) {
             SectionTitle("Hearing")
             Card {
@@ -1805,8 +1787,16 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
             }
         }
         Spacer(Modifier.height(16.dp))
-        TextButton(onClick = actions::disconnect, modifier = Modifier.fillMaxWidth()) {
-            Text(if (state.isPreview) "Exit preview" else "Disconnect", color = InaColors.Destructive)
+        Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val secondary = ButtonDefaults.buttonColors(containerColor = InaColors.Elevated, contentColor = InaColors.TextPrimary)
+            Button(onClick = onOpenControls, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(16.dp), colors = secondary) {
+                Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("All controls", fontSize = 14.sp, maxLines = 1, softWrap = false)
+            }
+            Button(onClick = actions::disconnect, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(16.dp), colors = secondary) {
+                Text(if (state.isPreview) "Exit preview" else "Disconnect", color = InaColors.Destructive, fontSize = 14.sp, maxLines = 1, softWrap = false)
+            }
         }
     }
 }
@@ -1816,7 +1806,7 @@ fun DeviceScreen(state: AirPodsState, actions: InaActions, onOpenControls: () ->
 @Composable
 fun ControlsScreen(state: AirPodsState, settings: InaSettings, actions: InaActions) {
     val model = state.model
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Controls", model?.name)
         if (!state.connected || model == null) {
             Card { Text("Connect a device to adjust controls.", color = InaColors.TextSecondary, modifier = Modifier.padding(20.dp)) }
@@ -1950,7 +1940,7 @@ fun RulesScreen(rules: OtaRules, syncing: Boolean, actions: InaActions) {
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(rules.rawJson) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Protocol Rules", "OtaProtocolRuleManager")
         Card {
             SettingRow("Rules v${rules.version}", "Signature: ${rules.signature}", icon = Icons.Rounded.Check, tint = InaColors.Success)
@@ -2018,7 +2008,7 @@ fun RulesScreen(rules: OtaRules, syncing: Boolean, actions: InaActions) {
 
 @Composable
 fun SettingsScreen(state: AirPodsState, settings: InaSettings, status: OnboardingStatus, actions: InaActions, permissions: PermissionActions) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = TAB_BAR_CLEARANCE)) {
         LargeTitle("Settings")
         PreviewToggleCard(state, actions)
         SectionTitle("Display")
