@@ -125,12 +125,12 @@ fun SuggestedActionCard(state: AirPodsState, actions: InaActions, onOpenControls
         dismissed = dismissed.mapNotNull { name -> SuggestionId.entries.firstOrNull { it.name == name } }.toSet(),
     ) ?: return
 
-    val run = {
+    val run: () -> Unit = {
         when (suggestion.id) {
             SuggestionId.LOW_BATTERY -> actions.setMode(ListeningMode.OFF)
             SuggestionId.RESUME, SuggestionId.START_LISTENING -> {
-                actions.resumeMedia()
                 dismissed = dismissed + suggestion.id.name
+                actions.resumeMedia()
             }
             SuggestionId.FIT_TEST -> onOpenControls()
             SuggestionId.TURN_ON_ANC -> actions.setMode(ListeningMode.ANC)
