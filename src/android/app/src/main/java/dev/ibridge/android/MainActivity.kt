@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -257,6 +258,12 @@ class MainActivity : ComponentActivity() {
         override fun playChirp(target: ChirpTarget?) = controller.playChirp(target)
         override fun setPreview(on: Boolean) = IBridgeStateStore.setPreview(on)
         override fun disconnect() = controller.disconnect()
+
+        override fun resumeMedia() {
+            // Preview values are simulated, so never start real playback from them.
+            if (!IBridgeStateStore.state.value.isPreview) MediaKeys.send(this@MainActivity, KeyEvent.KEYCODE_MEDIA_PLAY)
+            IBridgeStateStore.update { it.copy(pausedByEar = false) }
+        }
 
         override fun syncRules() {
             lifecycleScope.launch {

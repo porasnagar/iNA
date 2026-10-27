@@ -30,7 +30,7 @@ function Tile({
       aria-pressed={active}
       className={cn(
         "flex h-[68px] min-w-0 items-center gap-3 rounded-[24px] px-4 text-left transition-colors active:scale-[0.98]",
-        active ? "bg-primary text-primary-foreground" : "bg-elevated text-foreground",
+        active ? "bg-primary text-primary-foreground" : "bg-glass-tile text-foreground",
         disabled && "opacity-50",
       )}
     >
@@ -58,10 +58,10 @@ export function QuickSettings() {
       <button
         type="button"
         aria-label="Close Quick Settings"
-        className="absolute inset-0 bg-scrim backdrop-blur-md animate-in fade-in"
+        className="absolute inset-0 glass-scrim animate-in fade-in"
         onClick={() => actions.setShade(false)}
       />
-      <div className="relative max-h-full overflow-y-auto scrollbar-none rounded-b-[36px] bg-background/95 px-4 pb-4 pt-12 backdrop-blur-2xl animate-in slide-in-from-top duration-300">
+      <div className="relative max-h-full overflow-y-auto scrollbar-none rounded-b-[36px] px-4 pb-4 pt-12 liquid-glass animate-in slide-in-from-top duration-300">
         <div className="flex items-end justify-between px-1">
           <div>
             <div className="text-4xl font-light tabular-nums">
@@ -90,14 +90,14 @@ export function QuickSettings() {
           <Tile icon={RotateCw} label="Auto-rotate" sub={local.rotate ? "On" : "Off"} active={local.rotate} onClick={flip("rotate")} />
         </div>
 
-        <div className="mt-3 flex h-11 items-center gap-3 overflow-hidden rounded-full bg-elevated pr-4">
+        <div className="mt-3 flex h-11 items-center gap-3 overflow-hidden rounded-full bg-glass-tile pr-4">
           <div className="flex h-full w-2/3 items-center rounded-full bg-foreground/85 pl-4 text-background">
             <Sun className="size-4" />
           </div>
         </div>
 
         <div className="mt-5 px-1 text-xs font-semibold text-muted-foreground">Notifications</div>
-        <div className="mt-2 rounded-[24px] bg-card p-4">
+        <div className="mt-2 rounded-[24px] bg-glass-tile p-4">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <InaLogo className="size-4" />
             <span className="font-medium text-foreground">iNA</span>

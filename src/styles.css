@@ -114,6 +114,17 @@
   --shadow-phone: 0 40px 80px -20px oklch(0 0 0 / 0.7), 0 0 0 1px oklch(1 0 0 / 0.08);
   --shadow-sheet: 0 -10px 40px -10px oklch(0 0 0 / 0.6);
 
+  /* Liquid Glass — overridden to solid surfaces by .reduce-transparency */
+  --glass-fill: oklch(0.24 0.004 270 / 0.5);
+  --glass-sheen: linear-gradient(180deg, oklch(1 0 0 / 0.11) 0%, oklch(1 0 0 / 0.03) 38%, oklch(1 0 0 / 0) 70%, oklch(1 0 0 / 0.04) 100%);
+  --glass-blur: 30px;
+  --glass-saturate: 1.7;
+  --glass-rim: oklch(1 0 0 / 0.26);
+  --glass-edge: oklch(1 0 0 / 0.1);
+  --glass-tile: oklch(1 0 0 / 0.1);
+  --glass-scrim: oklch(0 0 0 / 0.32);
+  --glass-scrim-blur: 10px;
+
   --chart-1: oklch(0.63 0.2 255);
   --chart-2: oklch(0.78 0.2 148);
   --chart-3: oklch(0.8 0.17 70);
@@ -127,6 +138,19 @@
   --sidebar-accent-foreground: oklch(0.975 0 0);
   --sidebar-border: oklch(1 0 0 / 9%);
   --sidebar-ring: oklch(0.63 0.2 255);
+}
+
+/* Display › Reduce Transparency: every glass surface becomes an opaque, high-contrast card. */
+.reduce-transparency {
+  --glass-fill: var(--card);
+  --glass-sheen: linear-gradient(transparent, transparent);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --glass-rim: oklch(1 0 0 / 0.08);
+  --glass-edge: oklch(1 0 0 / 0.12);
+  --glass-tile: var(--elevated);
+  --glass-scrim: oklch(0 0 0 / 0.62);
+  --glass-scrim-blur: 0px;
 }
 
 @layer base {
@@ -162,10 +186,22 @@
 @utility shadow-sheet {
   box-shadow: var(--shadow-sheet);
 }
-@utility glass {
-  background: var(--sheet);
-  backdrop-filter: blur(28px) saturate(1.4);
-  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12);
+@utility liquid-glass {
+  background: var(--glass-sheen), var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 0 0 0.5px var(--glass-edge),
+    inset 0 -1px 0 oklch(1 0 0 / 0.05);
+}
+@utility bg-glass-tile {
+  background: var(--glass-tile);
+}
+@utility glass-scrim {
+  background: var(--glass-scrim);
+  -webkit-backdrop-filter: blur(var(--glass-scrim-blur));
+  backdrop-filter: blur(var(--glass-scrim-blur));
 }
 @utility scrollbar-none {
   scrollbar-width: none;

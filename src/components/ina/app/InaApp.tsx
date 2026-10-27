@@ -35,13 +35,14 @@ export function InaApp() {
 
   return (
     <div className="absolute inset-0 flex flex-col bg-background pt-10">
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-24 scrollbar-none">
         {state.tab === "device" && (isConnected ? <DeviceScreen /> : <ConnectScreen />)}
         {state.tab === "controls" && <ControlsScreen />}
         {state.tab === "rules" && <RulesScreen />}
         {state.tab === "settings" && <SettingsScreen />}
       </div>
-      <nav className="grid shrink-0 grid-cols-4 border-t border-border bg-background/90 pb-6 pt-1.5 backdrop-blur-xl">
+      {/* Floating Liquid Glass tab bar — content scrolls underneath it. */}
+      <nav className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 rounded-[28px] py-1.5 shadow-sheet liquid-glass">
         {TABS.map((t) => {
           const active = state.tab === t.key;
           return (

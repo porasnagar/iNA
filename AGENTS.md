@@ -16,3 +16,8 @@
 - Prototype protocol logic (`src/lib/ina/protocol.ts`, `ota.ts`) mirrors `AppleProtocolSpec` / `ProximityPacketParser` / `OtaProtocolRuleManager` in Kotlin; change both sides together and keep `protocol.test.ts` passing.
 - All prototype state lives in one React context (`src/lib/ina/store.tsx`); every simulated BLE packet is encoded then parsed through the real parser so the UI matches native behaviour.
 - Disconnected battery values are always -1 and render as `--%`; never derive accessory battery from anything else.
+- The suggested next action rules live in `src/lib/ina/suggest.ts` and are mirrored by `NextActionAdvisor.kt`; change both together and keep `suggest.test.ts` passing.
+- Liquid Glass in the prototype is driven by `--glass-*` CSS variables used by the `liquid-glass`, `glass-scrim` and `bg-glass-tile` utilities; Reduce Transparency only toggles the `.reduce-transparency` class on the phone screen, so new sheets must use these utilities instead of raw blur classes.
+- On Android, glass comes from `LocalGlass` (provided by `InaTheme` from `InaSettings.reduceTransparency`); set `backdropBlurred` only where something actually blurs the backdrop, so unblurred surfaces stay near-opaque for legibility.
+- Release APK signing reads `INA_KEYSTORE_FILE` / `INA_KEYSTORE_PASSWORD` / `INA_KEY_ALIAS` / `INA_KEY_PASSWORD` env vars and falls back to debug signing; release lint is advisory so CI never fails on it.
+

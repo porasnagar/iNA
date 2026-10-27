@@ -301,6 +301,7 @@ class InaNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName || sbn.isOngoing) return
+        if (!InaGraph.settings(this).settings.value.watchNotifications) return
         bridge?.notifyAdded(sbn)
     }
 
