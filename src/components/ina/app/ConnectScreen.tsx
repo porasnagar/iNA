@@ -140,7 +140,7 @@ function HowCard({
   return (
     <div className="rounded-[20px] bg-card p-4">
       <div className="flex items-center gap-3">
-        <span className={cn("grid size-8 shrink-0 place-items-center rounded-[10px] text-primary-foreground", tint)}>
+        <span className={cn("grid size-8 shrink-0 place-items-center rounded-[10px] text-foreground", tint)}>
           <I className="size-4" />
         </span>
         <span className="min-w-0 truncate text-[15px] font-semibold">{title}</span>

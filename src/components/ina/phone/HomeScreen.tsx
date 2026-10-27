@@ -45,7 +45,7 @@ function Icon({ app, onClick }: { app: AppIcon; onClick?: () => void }) {
   const I = app.icon;
   return (
     <button type="button" onClick={onClick} className="flex flex-col items-center gap-1.5 active:scale-95">
-      <span className={cn("grid size-[54px] place-items-center rounded-[18px] text-primary-foreground shadow-lg", app.tint)}>
+      <span className={cn("grid size-[54px] place-items-center rounded-[18px] text-foreground shadow-lg", app.tint)}>
         <I className="size-6" strokeWidth={2.2} />
       </span>
       <span className="text-[11px] font-medium text-foreground/90">{app.name}</span>
