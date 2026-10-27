@@ -1,4 +1,4 @@
-import { BatteryCharging, Bell, Bluetooth, Check, ChevronRight, Layers, Link2, type LucideIcon } from "lucide-react";
+import { BatteryCharging, Bell, Bluetooth, Check, ChevronRight, Layers, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 import { InaLogo } from "@/components/ina/InaLogo";
@@ -243,7 +243,6 @@ export function Onboarding() {
           onDeny={() => setDialog(false)}
         />
       )}
-      <Link2 className="hidden" />
     </div>
   );
 }

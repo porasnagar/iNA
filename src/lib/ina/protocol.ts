@@ -312,3 +312,12 @@ export function aapControlCommand(setting: number, value: number): number[] {
 export function aapModeCommand(mode: ListeningMode): number[] {
   return aapControlCommand(0x0d, MODE_AAP_VALUE[mode]);
 }
+
+/**
+ * Bluetooth Core spec: a valid PSM has an odd least-significant octet and an even
+ * most-significant octet (bit 0 of the upper byte is 0). 0x1001 is valid.
+ */
+export function isValidPsm(psm: number): boolean {
+  if (!Number.isInteger(psm) || psm < 0x0001 || psm > 0xffff) return false;
+  return (psm & 0x0001) === 1 && (psm & 0x0100) === 0;
+}

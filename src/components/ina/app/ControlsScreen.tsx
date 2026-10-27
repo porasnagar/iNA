@@ -35,13 +35,12 @@ function FitTest() {
   useEffect(() => {
     if (phase !== "running") return;
     const t = window.setTimeout(() => {
-      // A low left battery nibble is used by the simulator to represent a poor seal on that side.
-      setResult({ left: "good", right: state.accessory.right <= 20 ? "adjust" : "good" });
+      setResult({ left: "good", right: state.accessory.looseRightTip ? "adjust" : "good" });
       setPhase("done");
       actions.log("AAP", "Ear Tip Fit Test complete", "04 00 04 00 1B 00 01 01");
     }, 3200);
     return () => window.clearTimeout(t);
-  }, [phase, actions, state.accessory.right]);
+  }, [phase, actions, state.accessory.looseRightTip]);
 
   return (
     <div className="space-y-3 p-4">

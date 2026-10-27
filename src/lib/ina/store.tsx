@@ -45,6 +45,8 @@ export interface Accessory {
   rightInEar: boolean;
   lidCounter: number;
   rssi: number;
+  /** Simulator-only: makes the Ear Tip Fit Test report a poor right seal. */
+  looseRightTip: boolean;
 }
 
 export interface FeatureSettings {
@@ -125,6 +127,7 @@ const initialState: SimState = {
     rightInEar: false,
     lidCounter: 0,
     rssi: -52,
+    looseRightTip: false,
   },
   lastLidCounter: null,
   lastPacket: null,
@@ -306,7 +309,7 @@ function useSimStore() {
             ...next,
             lastLidCounter: packet.lidCounter,
             shadeOpen: false,
-            sheet: { paired, stage: paired && (s.connected || s.previewConnected) ? "info" : "info", step: 0, via },
+            sheet: { paired, stage: "info", step: 0, via },
           };
           return withLog(
             next,
