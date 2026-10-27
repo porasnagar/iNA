@@ -43,12 +43,12 @@ export function ModeSelector({
             onClick={() => onChange(m)}
             className={cn(
               "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl transition-all active:scale-95",
-              compact ? "h-12 text-[10px]" : "h-[68px] text-[11px]",
+              compact ? "h-12 text-[10px]" : "h-[68px] text-[10.5px]",
               active ? "bg-foreground text-background" : "bg-foreground/8 text-foreground hover:bg-foreground/12",
             )}
           >
             <Icon className={compact ? "size-4" : "size-5"} />
-            <span className="w-full truncate px-1 font-medium">{MODE_SHORT[m]}</span>
+            <span className="w-full truncate px-0.5 font-medium tracking-tight">{MODE_SHORT[m]}</span>
           </button>
         );
       })}

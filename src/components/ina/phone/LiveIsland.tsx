@@ -21,7 +21,7 @@ export function LiveIsland() {
       <div
         className={cn(
           "pointer-events-auto overflow-hidden bg-island text-foreground shadow-2xl transition-all duration-500 ease-[cubic-bezier(.2,.9,.25,1.1)]",
-          expanded ? "w-full rounded-[32px] p-4" : "h-8 w-[200px] rounded-full",
+          expanded ? "w-full rounded-[32px] p-4" : "h-8 w-[172px] rounded-full",
         )}
       >
         {!expanded ? (

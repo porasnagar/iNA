@@ -16,7 +16,7 @@ export function useClock() {
 }
 
 export function StatusBar({ tone = "default" }: { tone?: "default" | "light" }) {
-  const { actions, isConnected, displayBattery } = useSim();
+  const { state, actions, isConnected, displayBattery } = useSim();
   const now = useClock();
   const time = now ? now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M/i, "") : "9:41";
   const min = Math.min(displayBattery("left"), displayBattery("right"));
@@ -33,7 +33,7 @@ export function StatusBar({ tone = "default" }: { tone?: "default" | "light" }) 
       <span className="tabular-nums">{time}</span>
       <span className="absolute left-1/2 top-3 size-3.5 -translate-x-1/2 rounded-full bg-island ring-1 ring-foreground/10" />
       <span className="flex items-center gap-1.5">
-        {isConnected && (
+        {isConnected && state.shadeOpen && (
           <span className="flex items-center gap-0.5 text-[11px] font-semibold tabular-nums">
             <Headphones className="size-3.5" />
             {formatBattery(min)}
