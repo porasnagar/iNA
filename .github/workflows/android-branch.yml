@@ -1,0 +1,133 @@
+name: Android branch + APK
+
+# Runs on the website branch (the one Lovable syncs, full project).
+#  1. Copies src/android into the `android` branch as a standalone Android Studio project.
+#  2. Builds the test (debug) and release APKs from that branch.
+#  3. When versionName in app/build.gradle.kts is new, tags the android branch as v<versionName>
+#     and publishes a GitHub Release with both APKs (releases don't use artifact storage).
+on:
+  push:
+    branches: [website, main]
+    paths:
+      - "src/android/**"
+      - ".github/workflows/android-branch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-branch
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Update android branch
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.publish.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # One commit on `android` per website change; no force pushes, no history rewrites.
+      - id: publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tree=$(git rev-parse HEAD:src/android)
+          parent_args=()
+          if git fetch --depth=1 origin android 2>/dev/null; then
+            parent=$(git rev-parse FETCH_HEAD)
+            if [ "$(git rev-parse "$parent^{tree}")" = "$tree" ]; then
+              echo "android branch already matches src/android"
+              echo "sha=$parent" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            parent_args=(-p "$parent")
+          fi
+          msg="Sync from ${GITHUB_REF_NAME}@${GITHUB_SHA::7}: $(git log -1 --format=%s)"
+          sha=$(git commit-tree "$tree" "${parent_args[@]}" -m "$msg")
+          git push origin "$sha:refs/heads/android"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build APKs
+    needs: sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sync.outputs.sha }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The default package list includes the retired "tools" package, which newer
+      # cmdline-tools (16.0+) no longer ship, so list the exact packages instead.
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;35.0.0"
+          log-accepted-android-sdk-licenses: false
+
+      # Pinned Gradle 8.11.1 (matches AGP 8.10.1). Never "current" — Gradle 9+ breaks AGP 8.x.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      # Optional: sign the release APK with your own key. Add these repository secrets:
+      # INA_KEYSTORE_BASE64, INA_KEYSTORE_PASSWORD, INA_KEY_ALIAS, INA_KEY_PASSWORD.
+      - name: Prepare release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.INA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/ina-release.jks"
+            echo "INA_KEYSTORE_FILE=$RUNNER_TEMP/ina-release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No INA_KEYSTORE_BASE64 secret, so the release APK is signed with the debug key."
+          fi
+
+      - name: Build test (debug) and release APKs
+        env:
+          INA_KEYSTORE_PASSWORD: ${{ secrets.INA_KEYSTORE_PASSWORD }}
+          INA_KEY_ALIAS: ${{ secrets.INA_KEY_ALIAS }}
+          INA_KEY_PASSWORD: ${{ secrets.INA_KEY_PASSWORD }}
+        run: gradle --no-daemon --stacktrace assembleDebug assembleRelease
+
+      # Short retention + continue-on-error: a full artifact storage quota must never fail a good build.
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: iNA-apks
+          retention-days: 3
+          compression-level: 0
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+
+      - name: Check for a new version tag
+        id: version
+        run: |
+          v=$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "v$v is already released; bump versionName to publish a new release."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tag and release
+        if: steps.version.outputs.new == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ needs.sync.outputs.sha }}
+          name: iNA ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk

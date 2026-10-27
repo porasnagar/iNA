@@ -20,3 +20,4 @@
 - [x] 120Hz: GPU-friendly web animations; Android high refresh rate for activities + overlay
 - [x] Open source: LICENSE, CONTRIBUTING.md, README monorepo, vercel.json, Open Source badge + GitHub link (header, hero, footer)
 - [x] Home keeps the long premium scroll (sections reveal on scroll) like the liked Live preview, with links into the dedicated pages
+- [x] GitHub repo porasnagar/iNA: website + android branches, tag-based APK releases

@@ -3,6 +3,13 @@
 Thanks for helping make Apple hardware work better on Android. This repo holds both the
 website (with the in-browser app simulator) and the native Android app.
 
+## Branches
+
+- **`website`** — the full project. Open pull requests against this branch, including
+  Android changes (they live in `src/android/`).
+- **`android`** — generated copy of `src/android/` built by GitHub Actions. Don't open PRs
+  against it; it is overwritten from `website` on every change.
+
 ## Repository layout
 
 | Path | What lives there |
@@ -10,7 +17,7 @@ website (with the in-browser app simulator) and the native Android app.
 | `src/routes/`, `src/components/` | Website: TanStack Start + React 19 + Tailwind v4 |
 | `src/lib/ina/` | Protocol logic used by the simulator (mirrors the Kotlin code) |
 | `src/android/` | Native Android Studio project (`dev.ibridge.android`, Kotlin + Compose) |
-| `.github/workflows/android.yml` | Builds debug + release APKs on every push |
+| `.github/workflows/android-branch.yml` | Copies `src/android/` to the `android` branch, builds APKs, tags new versions |
 
 ## Getting started
 
@@ -36,7 +43,7 @@ there with Gradle 8.11.1. Do not upgrade to Gradle 9+ — AGP 8.x does not suppo
 
 ## Pull requests
 
-1. Fork, branch from `main`, keep PRs focused.
+1. Fork, branch from `website`, keep PRs focused.
 2. Run `bun run test` and `bun run lint`.
 3. Describe what changed and how you tested it (screenshots for UI changes).
 

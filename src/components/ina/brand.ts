@@ -10,11 +10,13 @@ export const BRAND = {
   tagline: "Universal Apple Hardware Interoperability Suite for Android",
 } as const;
 
-/**
- * Open-source repository. TODO(owner): replace with the real GitHub repo URL
- * (e.g. https://github.com/<you>/<repo>) — every GitHub link on the site reads from here.
- */
+/** Open-source repository — every GitHub link on the site reads from here. */
 export const REPO = {
-  url: "https://github.com/",
+  url: "https://github.com/porasnagar/iNA",
+  /** Full project (website + Android sources); the branch Lovable and Vercel use. */
+  websiteBranch: "website",
+  /** Standalone Android Studio project, generated from src/android by GitHub Actions. */
+  androidBranch: "android",
+  releasesUrl: "https://github.com/porasnagar/iNA/releases",
   license: "MIT",
 } as const;

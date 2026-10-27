@@ -30,12 +30,17 @@ until then remote manifests are rejected and the bundled rules stay active.
 
 ## Build on GitHub Actions
 
-Connect this project to GitHub, then open **Actions** → "Build iNA APK". Each run produces two artifacts:
+This project is the `android` branch of <https://github.com/porasnagar/iNA>. It is generated
+from `src/android/` on the `website` branch — make changes there, not here.
 
-- `iNA-debug-apk` — test build, debuggable.
-- `iNA-release-apk` — optimised (R8) release build plus `mapping.txt`.
+Each change builds one `iNA-apks` artifact (kept 3 days) with:
 
-Push a tag like `v1.0.0` to also attach both APKs to a GitHub Release.
+- the test build (debug, debuggable)
+- the release build (R8-optimised)
+
+**Versions are tags.** Bump `versionName` in `app/build.gradle.kts`; the next build tags this
+branch `v<versionName>` and publishes a GitHub Release with both APKs. Pushing a `v*` tag on
+this branch yourself also builds and releases that commit (`.github/workflows/android.yml`).
 
 ### Signing the release build
 

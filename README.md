@@ -13,15 +13,26 @@ Android 10–16+ phone — 100% user space: zero root, zero Magisk, zero iOS VM.
   Personalized Volume, head gestures, Ear Tip Fit Test, Find My chirp
 - Signed OTA protocol rules, so new models arrive without an app update
 
-## One repo, two apps
+## One repo, two branches
+
+Repository: <https://github.com/porasnagar/iNA>
+
+| Branch | Contents | Built by |
+| --- | --- | --- |
+| [`website`](https://github.com/porasnagar/iNA/tree/website) | Full project: website, simulator **and** the Android sources in `src/android/`. Edit here. | Lovable · Vercel |
+| [`android`](https://github.com/porasnagar/iNA/tree/android) | Standalone Android Studio project (a copy of `src/android/` at the root). Generated — don't edit. | GitHub Actions → APKs |
+
+Every change to `src/android/` on `website` is copied to `android` as one new commit by
+`.github/workflows/android-branch.yml`, which then builds the test and release APKs.
 
 ```text
 .
 ├── src/routes, src/components   Website + interactive app simulator (TanStack Start, React 19)
 ├── src/lib/ina                  Protocol logic shared by the simulator (mirrors Kotlin)
 ├── src/android                  Native Android Studio project — dev.ibridge.android
+│   └── .github/workflows        APK workflow used at the root of the android branch
 ├── public                       Favicon, manifest, robots.txt, sitemap.xml
-├── .github/workflows            APK builds (debug + release)
+├── .github/workflows            website → android branch sync + APK build
 └── vercel.json                  Website deployment on Vercel
 ```
 
@@ -39,19 +50,25 @@ bun run test
 
 ### Deploy on Vercel
 
-Import the repository in Vercel — `vercel.json` sets the install and build commands and builds
-the server for Vercel (`NITRO_PRESET=vercel`). No other settings are needed. The Android
-project in `src/android/` is plain text and is ignored by the web build except for the source
-viewer.
+Import the repository in Vercel and set **Settings → Git → Production Branch** to `website`.
+`vercel.json` sets the install and build commands and builds the server for Vercel
+(`NITRO_PRESET=vercel`). No other settings are needed.
 
 ## Android app
 
-- Open `src/android/` in Android Studio (JDK 17), or build from the command line with
-  Gradle **8.11.1**: `cd src/android && gradle assembleDebug`.
+- Open the `android` branch (or `src/android/` on `website`) in Android Studio (JDK 17), or
+  build from the command line with Gradle **8.11.1**: `gradle assembleDebug`.
 - Toolchain is pinned: AGP 8.10.1, Kotlin 2.1.21, compileSdk 36. Don't upgrade to Gradle 9+.
-- GitHub Actions builds a test and a release APK on every push; push a `v*` tag to attach
-  them to a GitHub Release. Release signing secrets are described in `src/android/README.md`.
 - Runs at the display's highest refresh rate (90 / 120 / 144 Hz) where supported.
+
+### Releases and tags
+
+- Every sync builds a test (debug) and a release APK, kept as a 3-day Actions artifact.
+- **New version = new tag.** Bump `versionName` in `src/android/app/build.gradle.kts`; the
+  next build tags the `android` branch `v<versionName>` (e.g. `v1.1.0`) and publishes a
+  [GitHub Release](https://github.com/porasnagar/iNA/releases) with both APKs.
+- You can also push a `v*` tag on the `android` branch yourself to release that commit.
+- Release signing secrets are described in `src/android/README.md`.
 
 ## Contributing
 

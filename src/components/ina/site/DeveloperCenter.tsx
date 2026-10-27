@@ -1,5 +1,6 @@
 import { Github, Loader2, Package } from "lucide-react";
 
+import { REPO } from "@/components/ina/brand";
 import { Button } from "@/components/ui/button";
 
 import { useProjectZip } from "./useProjectZip";
@@ -48,8 +49,9 @@ export function BuildGuide() {
           </span>
           <h3 className="mt-5 text-xl font-semibold tracking-tight">Automatic APK builds on GitHub</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Every push builds a test and a release APK. Push a tag starting with <span className="font-mono text-foreground">v</span> to attach them to
-            a GitHub Release.
+            The <span className="font-mono text-foreground">{REPO.androidBranch}</span> branch holds the Android Studio project on its own and builds a
+            test and a release APK on every change. Each new version is tagged{" "}
+            <span className="font-mono text-foreground">v1.2.0</span>-style and published as a GitHub Release.
           </p>
           <ul aria-label="Pinned toolchain" className="mt-4 flex flex-wrap gap-1.5">
             {TOOLCHAIN.map((t) => (
@@ -58,6 +60,18 @@ export function BuildGuide() {
               </li>
             ))}
           </ul>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button asChild variant="secondary" className="h-10 rounded-full px-4">
+              <a href={`${REPO.url}/tree/${REPO.androidBranch}`} target="_blank" rel="noreferrer">
+                <Github /> Android branch
+              </a>
+            </Button>
+            <Button asChild variant="secondary" className="h-10 rounded-full px-4">
+              <a href={REPO.releasesUrl} target="_blank" rel="noreferrer">
+                <Package /> APK releases
+              </a>
+            </Button>
+          </div>
         </div>
       </div>
     </section>
