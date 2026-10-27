@@ -16,7 +16,7 @@ export const BRAND = {
 export const REPO = {
   url: "https://github.com/porasnagar/iNA",
   /** Full project (website + Android sources); the branch Lovable and Vercel use. */
-  websiteBranch: "main",
+  websiteBranch: "website",
   /** Standalone Android Studio project, generated from src/android by GitHub Actions. */
   androidBranch: "android",
   releasesUrl: "https://github.com/porasnagar/iNA/releases",
