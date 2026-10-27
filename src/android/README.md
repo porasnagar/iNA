@@ -24,3 +24,7 @@ Package `dev.ibridge.android` · Android 10 (API 29) to Android 16 (API 36) · z
 `OtaProtocolRuleManager` reads a signed envelope `{ "payload_b64", "sig_b64" }` from
 `MANIFEST_URL`. Replace `RULES_PUBLIC_KEY_B64` with your P-256 public key before shipping;
 until then remote manifests are rejected and the bundled rules stay active.
+
+## Build on GitHub Actions
+Connect this project to GitHub, then open the **Actions** tab → "Build iNA APK" → download the `iNA-debug-apk` artifact.
+Toolchain is pinned: Gradle 8.11.1, AGP 8.10.1, Kotlin 2.1.21, JDK 17. Do not bump Gradle to 9.x without upgrading AGP to 9.x too.
