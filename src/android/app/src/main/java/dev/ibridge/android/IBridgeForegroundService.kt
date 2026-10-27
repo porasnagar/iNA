@@ -156,7 +156,10 @@ class IBridgeForegroundService : LifecycleService() {
     }
 
     /**
-     * Foreground → inline sheet. Background → WindowManager overlay, falling back to an Activity.
+     * Foreground → inline sheet. Home Screen / other apps → WindowManager overlay. Without the
+     * "Display over other apps" permission, Android silently blocks background Activity starts
+     * (no exception), so only apps with a companion association try the Activity; everyone
+     * else gets a heads-up notification that opens the sheet.
      * [CasePopupGate] makes sure only one shows at a time and a closed pop-up stays closed.
      */
     private fun showCaseOpenPopup(state: AirPodsState, now: Long) {
@@ -165,12 +168,17 @@ class IBridgeForegroundService : LifecycleService() {
         when {
             IBridgeStateStore.appInForeground -> IBridgeStateStore.emitPopup(state)
             Settings.canDrawOverlays(this) -> overlay.show(state)
-            else -> runCatching {
-                // Apps with a CompanionDeviceManager association are exempt from background-activity limits.
-                startActivity(CasePopupOverlayActivity.popupIntent(this))
-            }.onFailure { postHeadsUpFallback(state) }
+            hasCompanionAssociation() -> runCatching { startActivity(CasePopupOverlayActivity.popupIntent(this)) }
+                .onFailure { postHeadsUpFallback(state) }
+            else -> postHeadsUpFallback(state)
         }
     }
+
+    @Suppress("DEPRECATION")
+    private fun hasCompanionAssociation(): Boolean = runCatching {
+        val cdm = getSystemService(android.companion.CompanionDeviceManager::class.java) ?: return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) cdm.myAssociations.isNotEmpty() else cdm.associations.isNotEmpty()
+    }.getOrDefault(false)
 
     private fun postHeadsUpFallback(state: AirPodsState) {
         val n = NotificationCompat.Builder(this, CHANNEL_POPUP)
@@ -196,11 +204,12 @@ class IBridgeForegroundService : LifecycleService() {
             val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
             if (!BluetoothLink.isAppleAudio(device)) return
             when (intent.action) {
+                // Auto-reconnects happen all the time (taking an AirPod out, walking back in range),
+                // so they only update the app; the pop-up belongs to opening the lid.
                 BluetoothDevice.ACTION_ACL_CONNECTED -> lifecycleScope.launch {
                     if (IBridgeStateStore.state.value.isPreview) IBridgeStateStore.reset()
                     controller.connect(device)
                     notifications.cancel(POPUP_NOTIFICATION_ID)
-                    showCaseOpenPopup(IBridgeStateStore.state.value, SystemClock.elapsedRealtime())
                 }
                 BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                     val current = IBridgeStateStore.state.value
