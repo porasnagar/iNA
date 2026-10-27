@@ -1,21 +1,19 @@
 name: Build iNA APK
 
+# Lives at the root of the `android` branch (copied there from src/android on the website
+# branch). Push a tag like v1.2.0 on the android branch to build and release that commit.
+# Regular syncs are built by the website branch's "Android branch + APK" workflow.
 on:
   push:
-    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write # only used to attach APKs to a GitHub Release on v* tags
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/android
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +22,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # The default package list includes the retired "tools" package, which newer
-      # cmdline-tools (16.0+) no longer ship, so list the exact packages instead.
+      # List exact SDK packages; the retired "tools" package no longer exists.
       - uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools platforms;android-36 build-tools;35.0.0"
@@ -36,8 +33,6 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
-      # Optional: sign the release APK with your own key. Add these repository secrets:
-      # INA_KEYSTORE_BASE64, INA_KEYSTORE_PASSWORD, INA_KEY_ALIAS, INA_KEY_PASSWORD.
       - name: Prepare release keystore
         env:
           KEYSTORE_B64: ${{ secrets.INA_KEYSTORE_BASE64 }}
@@ -45,7 +40,6 @@ jobs:
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/ina-release.jks"
             echo "INA_KEYSTORE_FILE=$RUNNER_TEMP/ina-release.jks" >> "$GITHUB_ENV"
-            echo "Release APK will be signed with your keystore."
           else
             echo "::notice::No INA_KEYSTORE_BASE64 secret, so the release APK is signed with the debug key."
           fi
@@ -57,7 +51,6 @@ jobs:
           INA_KEY_PASSWORD: ${{ secrets.INA_KEY_PASSWORD }}
         run: gradle --no-daemon --stacktrace assembleDebug assembleRelease
 
-      # Short retention + continue-on-error: a full artifact storage quota must never fail a good build.
       - uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -65,15 +58,14 @@ jobs:
           retention-days: 3
           compression-level: 0
           path: |
-            src/android/app/build/outputs/apk/debug/*.apk
-            src/android/app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
 
-      # Releases don't count against artifact storage — push a v* tag to get permanent APK downloads.
       - name: Attach APKs to the GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            src/android/app/build/outputs/apk/release/*.apk
-            src/android/app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
