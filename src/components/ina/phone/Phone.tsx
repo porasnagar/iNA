@@ -47,16 +47,32 @@ function usePhoneFit(reserve: number, allowBare: boolean) {
  * The frame is laid out at its design size and scaled to fit the viewport; with `allowBare`,
  * small screens get an edge-to-edge screen without the mock bezel.
  */
+/** True when the visitor's system prefers light mode (read after mount, so SSR stays dark). */
+function useSystemLight() {
+  const [light, setLight] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const update = () => setLight(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return light;
+}
+
 export function Phone({ reserve = 128, allowBare = false }: { reserve?: number; allowBare?: boolean }) {
   const { state } = useSim();
   useChirp();
   const fit = usePhoneFit(reserve, allowBare);
+  const systemLight = useSystemLight();
+  const light = state.appearance === "light" || (state.appearance === "system" && systemLight);
 
   const screen = (
     <div
       className={cn(
         "relative h-full w-full overflow-hidden bg-background",
         !fit.bare && "rounded-[48px]",
+        light && "phone-light",
         state.reduceTransparency && "reduce-transparency",
       )}
       data-testid="phone-screen"
